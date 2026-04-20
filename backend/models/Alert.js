@@ -1,10 +1,15 @@
 const mongoose = require("mongoose");
 
-const AlertSchema = new mongoose.Schema({
-  userId:String,
-  title:String,
-  amount:Number,
-  expiry:Date
-});
+const alertSchema = new mongoose.Schema({
+  userId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User"
+  },
+  name: String,
+  service: String,
+  amount: Number,
+  frequency: String,
+  expiryDate: Date
+}, { timestamps: true });
 
-module.exports = mongoose.model("Alert",AlertSchema);
+module.exports = mongoose.model("Alert", alertSchema);
