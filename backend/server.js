@@ -2,6 +2,11 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
+require("./jobs/cron"); // IMPORTANT - start cron job
+
+app.use("/api/auth", require("./routes/auth"));
+app.use("/api/payment", require("./routes/payment"));
+app.use("/api/alerts", require("./routes/alert"));
 
 const app = express();
 
