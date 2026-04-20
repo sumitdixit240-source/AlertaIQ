@@ -505,32 +505,29 @@
             showToast("Success", "Your account has been created!", "success");
         }
 
-        function handleLogin(e) {
-            e.preventDefault();
-            const loginId = document.getElementById('login-id').value;
-            const pass = document.getElementById('login-password').value;
+        async function handleLogin(e) {
+    e.preventDefault();
 
-            // Simplified validation for demo: Look for user in mock DB or allow dummy login
-            let matchedUser = usersDB.find(u => u.email === loginId || u.mobile === loginId || u.whatsapp === loginId);
-            
-            // If it's a fresh session and no user found, we'll allow a dummy "demo" entry
-            if (!matchedUser) {
-                matchedUser = { name: loginId || "Guest User" };
-            }
+    const loginId = document.getElementById('login-id').value;
+    const password = document.getElementById('login-password').value;
 
-            // Simulate sending email alert
-            sendLoginAlert(matchedUser);
+    const res = await fetch("https://alertaiq.onrender.com/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ loginId, password })
+    });
 
-            currentUser = matchedUser;
-            document.getElementById('user-display-name').innerText = currentUser.name;
-            
-            showToast("Login Alert", `Alert sent to alertaiq6@gmail.com`, "info");
-            
-            setTimeout(() => {
-                showPage('dashboard');
-                showToast("Welcome", `Logged in as ${currentUser.name}`, "success");
-            }, 500);
-        }
+    const data = await res.json();
+
+    if (data.token) {
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        window.location.href = "dashboard.html"; // 🔥 IMPORTANT
+    } else {
+        alert(data.message);
+    }
+}
 
         function sendLoginAlert(user) {
             const time = new Date().toLocaleString();
