@@ -2,40 +2,65 @@ const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
 require("dotenv").config();
-require("./jobs/cron"); // start cron jobs
 
-const app = express();
+// Cron job (must exist or comment it if missing)
+try {
+  require("./jobs/cron");
+} catch (err) {
+  console.log("Cron not loaded");
+}
 
-/* ================= MIDDLEWARE ================= */
+const app = express(); // ✅ MUST BE FIRST
+
+// ---------------- MIDDLEWARE ----------------
 app.use(cors());
 app.use(express.json());
 
-/* ================= HEALTH CHECK ================= */
+// ---------------- DATABASE ----------------
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log("DB Connected"))
+  .catch(err => console.log("DB Error:", err));
+
+// ---------------- ROUTES ----------------
+// IMPORTANT: ALL routes must export express.Router()
+
+const authRoute = require("./routes/auth");
+const paymentRoute = require("./routes/payment");
+const alertRoute = require("./routes/alert");
+const mailerRoute = require("./routes/mailer");
+const aiRoute = require("./routes/ai");
+const userRoute = require("./routes/user");
+const otpRoute = require("./routes/otp");
+
+// Razorpay OPTIONAL (only if file exists)
+let razorpayRoute;
+try {
+  razorpayRoute = require("./routes/razorpay");
+} catch (e) {
+  console.log("Razorpay route missing - skipping");
+}
+
+// ---------------- USE ROUTES ----------------
+app.use("/api/auth", authRoute);
+app.use("/api/payment", paymentRoute);
+app.use("/api/alerts", alertRoute);
+app.use("/api/mailer", mailerRoute);
+app.use("/api/ai", aiRoute);
+app.use("/api/user", userRoute);
+app.use("/api/otp", otpRoute);
+
+if (razorpayRoute) {
+  app.use("/api/razorpay", razorpayRoute);
+}
+
+// ---------------- TEST ----------------
 app.get("/", (req, res) => {
   res.send("AlertAIQ Backend Running 🚀");
 });
 
-/* ================= ROUTES ================= */
-app.use("/api/auth", require("./routes/auth"));
-app.use("/api/payment", require("./routes/payment"));
-app.use("/api/razorpay", require("./routes/razorpay")); // FIXED (separate file)
-app.use("/api/alerts", require("./routes/alert"));
-app.use("/api/mailer", require("./routes/mailer"));
-app.use("/api/ai", require("./routes/ai"));
-app.use("/api/user", require("./routes/user"));
-app.use("/api/otp", require("./routes/otp"));
-app.use("/api/cron", require("./routes/cron"));
-app.use("/api/generateOTP", require("./routes/generateOTP"));
-
-/* ================= DATABASE ================= */
-mongoose
-  .connect(process.env.MONGO_URI)
-  .then(() => console.log("DB Connected ✅"))
-  .catch((err) => console.error("DB Connection Error ❌", err));
-
-/* ================= START SERVER ================= */
+// ---------------- START SERVER ----------------
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log("Server running on port", PORT);
 });
