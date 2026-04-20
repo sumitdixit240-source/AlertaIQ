@@ -1,29 +1,33 @@
-const router = require("express").Router();
+const express = require("express");
+const router = express.Router();
 const User = require("../models/User");
-const bcrypt = require("bcryptjs");
-const {sign} = require("../utils/jwt");
-
-// REGISTER
-router.post("/register", async (req,res)=>{
-  const hash = await bcrypt.hash(req.body.password,10);
-
-  await User.create({
-    ...req.body,
-    password:hash
-  });
-
-  res.json({message:"User created"});
-});
+const jwt = require("jsonwebtoken");
 
 // LOGIN
-router.post("/login", async (req,res)=>{
-  const user = await User.findOne({email:req.body.email});
+router.post("/login", async (req, res) => {
+  const { email, password } = req.body;
 
-  const ok = await bcrypt.compare(req.body.password,user.password);
+  let user = await User.findOne({ email });
 
-  const token = sign(user._id);
+  if (!user) {
+    // auto create user (for testing)
+    user = await User.create({ name: "User", email, password });
+  }
 
-  res.json({token});
+  if (user.password !== password) {
+    return res.status(400).json({ message: "Invalid credentials" });
+  }
+
+  const token = jwt.sign(
+    { id: user._id },
+    process.env.JWT_SECRET,
+    { expiresIn: "7d" }
+  );
+
+  res.json({
+    token,
+    user: { name: user.name }
+  });
 });
 
 module.exports = router;
