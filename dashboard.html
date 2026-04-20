@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RenewAI | Ultra Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+        :root {
+            --accent: #6366f1;
+            --bg-dark: #020617;
+            --card-bg: rgba(15, 23, 42, 0.8);
+            --text-main: #f8fafc;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .category-chip {
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .category-chip:hover {
+            background: var(--accent);
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        }
+
+        @keyframes flashGreen {
+            0% { border-color: #10b981; box-shadow: 0 0 20px rgba(16, 185, 129, 0.5); background: rgba(16, 185, 129, 0.1); }
+            100% { border-color: rgba(255, 255, 255, 0.1); box-shadow: none; }
+        }
+        .new-node { animation: flashGreen 2s ease-out; }
+
+        .timer-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .timer-segment {
+            background: rgba(0, 0, 0, 0.4);
+            padding: 10px 4px;
+            border-radius: 8px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .timer-val { display: block; font-size: 1.1rem; font-weight: 800; color: #10b981; }
+        .timer-unit { display: block; font-size: 0.5rem; color: #64748b; font-weight: 800; }
+
+        select, input {
+            background: #0f172a !important;
+            border: 1px solid #334155 !important;
+            color: white !important;
+            padding: 0.75rem !important;
+            border-radius: 10px !important;
+        }
+
+        #mesh-canvas { position: fixed; top: 0; left: 0; z-index: -1; opacity: 0.4; }
+
+        .logout-screen {
+            position: fixed; inset: 0; background: #020617; z-index: 1000;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            text-align: center; animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="antialiased">
+    <canvas id="mesh-canvas"></canvas>
+
+    <div id="overlay" class="fixed inset-0 z-[100] hidden bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
+        <div id="loader-box" class="flex flex-col items-center">
+            <div class="w-16 h-16 border-4 border-indigo-500/20 border-t-indigo-500 rounded-full animate-spin mb-6"></div>
+            <h2 id="overlay-title" class="text-2xl font-bold text-white mb-2">Processing Node</h2>
+            <p id="overlay-sub" class="text-slate-400">Deploying AI monitors...</p>
+        </div>
+        <div id="success-box" class="hidden flex flex-col items-center">
+            <div class="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center text-4xl mb-6 border border-emerald-500/20">
+                <i class="fas fa-envelope-open-text"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2">Kindly check your confirmation mail!</h2>
+            <p class="text-slate-400 max-w-sm">A brief of your entity and notification schedule has been sent via email & WhatsApp.</p>
+        </div>
+    </div>
+
+    <div id="main-ui" class="opacity-0 transition-opacity duration-700 min-h-screen flex flex-col">
+        <header class="sticky top-0 z-50 border-b border-white/5 bg-slate-900/50 backdrop-blur-md px-6 py-4">
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-4">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-600/30">
+                        <i class="fas fa-bolt text-white"></i>
+                    </div>
+                    <h1 class="text-xl font-black text-white">Renew<span class="text-indigo-400">AI</span></h1>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="local-status" class="text-[10px] font-mono text-slate-500 hidden md:block">Local Storage Sync Active</span>
+                    <button onclick="triggerLogout()" class="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-slate-400 hover:text-white transition-all">
+                        <i class="fas fa-sign-out-alt"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <main class="flex-1 max-w-7xl mx-auto w-full p-6 lg:p-8 space-y-12">
+            <section>
+                <div class="mb-8">
+                    <h2 class="text-2xl font-bold text-white">Create New Node</h2>
+                    <p class="text-slate-500 text-sm">Select a specialized sector to begin monitoring.</p>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4" id="cat-grid"></div>
+            </section>
+
+            <section>
+                <div class="flex items-center justify-between mb-8">
+                    <h3 class="text-xl font-bold text-white flex items-center gap-3">
+                        <i class="fas fa-satellite-dish text-indigo-400"></i> Active Sync Grid
+                    </h3>
+                    <div id="burn-meter" class="text-emerald-400 font-bold text-sm bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">₹0 Total Monthly</div>
+                </div>
+                <div id="nodes-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
+            </section>
+        </main>
+    </div>
+
+    <div id="modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-sm">
+        <div class="glass-card w-full max-w-lg rounded-3xl p-8 border-indigo-500/30">
+            <div class="flex justify-between items-center mb-8">
+                <div>
+                    <h3 class="text-2xl font-bold text-white" id="modal-cat">Configure Sector</h3>
+                    <p class="text-indigo-400 text-[10px] font-bold uppercase tracking-widest">Entity Initialization</p>
+                </div>
+                <button onclick="closeModal()" class="text-slate-500 hover:text-white"><i class="fas fa-times"></i></button>
+            </div>
+
+            <form id="node-form" class="space-y-6">
+                <input type="hidden" id="form-cat-val">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Service Sub-Category</label>
+                        <select id="form-sub" required class="w-full"></select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Alert Frequency</label>
+                            <select id="form-freq" required class="w-full">
+                                <option value="1h">Every 1 Hour</option>
+                                <option value="6h">Every 6 Hours</option>
+                                <option value="12h">Every 12 Hours</option>
+                                <option value="24h">Every 24 Hours</option>
+                                <option value="Week">Weekly</option>
+                                <option value="Month">Monthly</option>
+                                <option value="Year">Annually</option>
+                                <option value="Once (3d Before)">3 Days before expiry</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Amount (₹)</label>
+                            <input type="number" id="form-amt" placeholder="0.00" required class="w-full">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase mb-2">Expiry Date & Time</label>
+                        <input type="datetime-local" id="form-expiry" required class="w-full">
+                    </div>
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-600/20 transition-all">
+                    CREATE ENTITY
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        import { createAlert } from "./js/api.js";
+
+        const SECTORS = [
+            { name: "SaaS Subscriptions", icon: "fa-cloud", subs: ["Amazon Prime", "Netflix", "ChatGPT Plus", "Claude Pro", "Adobe CC", "Spotify", "GitHub Pro", "Midjourney", "Figma Pro", "Canva", "Dropbox", "Slack", "Zoom", "Youtube Premium", "Disney+", "LinkedIn Premium", "Hulu", "Microsoft 365", "Grammarly", "Cursor AI"] },
+            { name: "Billing Related", icon: "fa-receipt", subs: ["Phone Bill", "Electricity Bill", "Water Bill", "Gas Connection", "Broadband", "Postpaid Mobile", "DTH Recharge", "Society Maintenance", "Waste Disposal", "Cooking Gas", "Piped Water", "Home Security", "Cable TV", "Landline", "LPG Cylinder", "Municipal Bill", "Electricity Commercial", "Sewerage Tax", "Trade License", "Signage Bill"] },
+            { name: "Tax Related", icon: "fa-landmark", subs: ["GST Monthly", "Income Tax Advance", "Property Tax", "Professional Tax", "Municipal Tax", "Capital Gains", "TDS Filing", "Corporate Tax", "Wealth Tax", "Service Tax", "Custom Duty", "Excise Duty", "Vehicle Tax", "Toll Charges", "Road Tax", "Stamp Duty", "Gift Tax", "Luxury Tax", "Education Cess", "E-Way Bill"] },
+            { name: "Entertainment", icon: "fa-play-circle", subs: ["BookMyShow", "PVR Membership", "Xbox Pass", "PlayStation Plus", "Twitch Subs", "Steam Games", "Discord Nitro", "Eventbrite", "Concert Pass", "Cinema Club", "Audible", "Kindle Unlimited", "Magazines", "Patreon", "OnlyFans", "Apple One", "Epic Games", "Quest Store", "Nintendo Online", "Stadia"] },
+            { name: "Financial", icon: "fa-wallet", subs: ["Home Loan EMI", "Car Loan EMI", "Credit Card", "Mutual Fund SIP", "Life Insurance", "Health Insurance", "Term Plan", "PPF Installment", "NPS Contribution", "RD Deposit", "Stock Portfolio", "Bank Locker", "Audit Fees", "Personal Loan", "Business Loan", "Gold Bond", "Demat Charges", "Trading Fee", "Fixed Deposit", "Asset Mgmt"] },
+            { name: "Education", icon: "fa-graduation-cap", subs: ["School Fees", "College Fees", "Coursera", "Udemy", "Skillshare", "Masterclass", "Research Grant", "Library Card", "Language Class", "Coding Bootcamp", "Exam Fees", "Certification", "Tuition", "Hostel Fees", "School Bus", "Lab Fees", "Book Store", "Thesis Cost", "Alumni Fee", "Sports Coaching"] },
+            { name: "Healthcare", icon: "fa-heartbeat", subs: ["Pharmacy Refill", "Gym Membership", "Doctor Consult", "Lab Tests", "Yoga Class", "Therapy", "Vitamins", "Health Checkup", "Dental Care", "Eye Care", "Personal Trainer", "Healthy Meals", "Critical Care", "Accident Policy", "Wellness App", "Meditation", "Blood Bank", "Diagnostic", "Surgery Fund", "Vaccination"] },
+            { name: "Automotive", icon: "fa-car", subs: ["Petrol Expense", "Diesel Expense", "EV Charging", "Car Service", "Insurance Renewal", "Tire Change", "Wheel Alignment", "Car Wash", "Parking Fee", "FastTag", "Roadside Assist", "Driver Salary", "Chauffeur", "Spare Parts", "Registration", "PUC Cert", "Traffic Fine", "Garage Rent", "Accessories", "Navigation"] },
+            { name: "Real Estate", icon: "fa-home", subs: ["Flat Rent", "Office Lease", "Coworking Space", "Brokerage", "Property Maintenance", "Security Pay", "Cleaning Service", "Interior AMC", "Pest Control", "Lift AMC", "Gardening", "Lawn Care", "Pool Service", "House Tax", "Inventory", "Storage Rent", "Warehouse", "Real Estate Tax", "Renovation", "Home Insurance"] },
+            { name: "Business Ops", icon: "fa-briefcase", subs: ["Domain Renewal", "Web Hosting", "Cloud Compute", "API Usage", "Marketing Ads", "SEO Service", "Legal Fee", "Courier", "Freelance Pay", "Payroll", "Office Supplies", "Printing", "Trade Shows", "PR Agency", "Data Backup", "Software License", "Hardware AMC", "Logistics", "Inventory Sub", "Staff Welfare"] }
+        ];
+
+        let nodes = [];
+        let newlyAddedId = null;
+        let activeIntervals = {};
+
+        // Bootstrapping
+        window.onload = () => {
+            loadFromStorage();
+            renderCategories();
+            renderNodes();
+            updateBurn();
+            initMesh();
+            document.getElementById('main-ui').classList.remove('opacity-0');
+        };
+
+        function loadFromStorage() {
+            const saved = localStorage.getItem('renew_ai_nodes');
+            nodes = saved ? JSON.parse(saved) : [];
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('renew_ai_nodes', JSON.stringify(nodes));
+        }
+
+        function renderCategories() {
+            const grid = document.getElementById('cat-grid');
+            grid.innerHTML = SECTORS.map(s => `
+                <div onclick="openModal('${s.name}')" class="category-chip p-4 rounded-2xl flex flex-col items-center gap-3">
+                    <i class="fas ${s.icon} text-xl text-indigo-400"></i>
+                    <span class="text-[9px] font-bold text-white uppercase text-center leading-tight">${s.name}</span>
+                </div>
+            `).join('');
+        }
+
+        window.openModal = (cat) => {
+            const sector = SECTORS.find(s => s.name === cat);
+            document.getElementById('modal-cat').innerText = cat;
+            document.getElementById('form-cat-val').value = cat;
+            const sub = document.getElementById('form-sub');
+            sub.innerHTML = sector.subs.map(s => `<option value="${s}">${s}</option>`).join('');
+            document.getElementById('modal').classList.remove('hidden');
+        };
+
+        window.closeModal = () => document.getElementById('modal').classList.add('hidden');
+
+        document.getElementById('node-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const data = {
+                id: 'node_' + Date.now(),
+                cat: document.getElementById('form-cat-val').value,
+                sub: document.getElementById('form-sub').value,
+                freq: document.getElementById('form-freq').value,
+                amt: parseFloat(document.getElementById('form-amt').value),
+                expiry: document.getElementById('form-expiry').value,
+                created: Date.now()
+            };
+
+            closeModal();
+            showNotifOverlay();
+            
+            // Simulating AI interaction
+            await getAISuggestion(data);
+
+            // API Deployment logic
+            try {
+                await createAlert({
+                    userId: localStorage.getItem("userId"),
+                    service: data.sub,
+                    amount: data.amt,
+                    expiry: data.expiry,
+                    frequency: data.freq
+                });
+                
+                // Still keep local state updated for UI responsiveness
+                nodes.unshift(data);
+                saveToStorage();
+                newlyAddedId = data.id;
+            } catch (err) {
+                console.error("API Deployment failed:", err);
+            }
+
+            setTimeout(() => {
+                hideNotifOverlay();
+                renderNodes();
+                updateBurn();
+            }, 3000);
+        };
+
+        async function getAISuggestion(node) {
+            const apiKey = "";
+            const prompt = `User added a ${node.sub} (${node.cat}) entity. Expiry: ${node.expiry}. Freq: ${node.freq}. Amt: ₹${node.amt}. Give 1 smart AI suggestion (15 words) from current date ${new Date().toLocaleString()}.`;
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+                });
+                const resData = await res.json();
+                console.log("AI Brief:", resData.candidates[0].content.parts[0].text);
+            } catch (e) { console.log("AI Brief: Monitoring standard rates for " + node.sub); }
+        }
+
+        function renderNodes() {
+            Object.values(activeIntervals).forEach(clearInterval);
+            activeIntervals = {};
+
+            const grid = document.getElementById('nodes-grid');
+            if (nodes.length === 0) {
+                grid.innerHTML = `<div class="col-span-full py-12 text-center opacity-30 font-bold border-2 border-dashed border-white/5 rounded-3xl">GRID READY FOR DEPLOYMENT</div>`;
+                return;
+            }
+
+            grid.innerHTML = nodes.map(node => `
+                <div class="glass-card p-6 rounded-3xl flex flex-col gap-5 border-white/5 ${node.id === newlyAddedId ? 'new-node' : ''}">
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                                <i class="${SECTORS.find(s => s.name === node.cat)?.icon || 'fa-cube'}"></i>
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-white">${node.sub}</h4>
+                                <p class="text-[9px] font-black text-slate-500 uppercase">${node.cat}</p>
+                            </div>
+                        </div>
+                        <button onclick="del('${node.id}')" class="text-slate-600 hover:text-rose-500"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+
+                    <div class="flex items-baseline gap-2">
+                        <span class="text-3xl font-black text-white">₹${node.amt.toLocaleString()}</span>
+                        <span class="text-[9px] text-emerald-400 font-bold uppercase">${node.freq} Alert</span>
+                    </div>
+
+                    <div class="timer-grid" id="timer-${node.id}">
+                        <div class="timer-segment"><span class="timer-val" data-unit="days">00</span><span class="timer-unit">DAYS</span></div>
+                        <div class="timer-segment"><span class="timer-val" data-unit="hours">00</span><span class="timer-unit">HRS</span></div>
+                        <div class="timer-segment"><span class="timer-val" data-unit="minutes">00</span><span class="timer-unit">MIN</span></div>
+                        <div class="timer-segment"><span class="timer-val" data-unit="seconds">00</span><span class="timer-unit">SEC</span></div>
+                    </div>
+                </div>
+            `).join('');
+
+            nodes.forEach(n => startTimer(n.id, n.expiry));
+            newlyAddedId = null;
+        }
+
+        function startTimer(id, target) {
+            const el = document.getElementById(`timer-${id}`);
+            if (!el) return;
+
+            const update = () => {
+                const now = new Date().getTime();
+                const end = new Date(target).getTime();
+                const diff = end - now;
+
+                if (diff <= 0) {
+                    el.innerHTML = `<div class="col-span-full py-2 bg-rose-500/10 text-rose-500 rounded-lg text-center text-xs font-bold uppercase tracking-widest border border-rose-500/20">SERVICE EXPIRED</div>`;
+                    if (activeIntervals[id]) clearInterval(activeIntervals[id]);
+                    return;
+                }
+
+                const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+                const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const s = Math.floor((diff % (1000 * 60)) / 1000);
+
+                const segs = {
+                    days: el.querySelector('[data-unit="days"]'),
+                    hours: el.querySelector('[data-unit="hours"]'),
+                    minutes: el.querySelector('[data-unit="minutes"]'),
+                    seconds: el.querySelector('[data-unit="seconds"]')
+                };
+
+                if (segs.days) segs.days.innerText = String(d).padStart(2, '0');
+                if (segs.hours) segs.hours.innerText = String(h).padStart(2, '0');
+                if (segs.minutes) segs.minutes.innerText = String(m).padStart(2, '0');
+                if (segs.seconds) segs.seconds.innerText = String(s).padStart(2, '0');
+            };
+
+            update();
+            activeIntervals[id] = setInterval(update, 1000);
+        }
+
+        window.del = (id) => {
+            nodes = nodes.filter(n => n.id !== id);
+            saveToStorage();
+            renderNodes();
+            updateBurn();
+        };
+
+        function updateBurn() {
+            const total = nodes.reduce((a, b) => a + b.amt, 0);
+            document.getElementById('burn-meter').innerText = `₹${total.toLocaleString()} Total Monthly Burn`;
+        }
+
+        window.triggerLogout = () => {
+            const l = document.createElement('div');
+            l.className = 'logout-screen';
+            l.innerHTML = `
+                <div class="mb-6 text-6xl animate-bounce">👋</div>
+                <h2 class="text-3xl font-black text-white">COME BACK SOON!</h2>
+                <p class="text-slate-400 mt-2">Closing secure session channels...</p>
+                <div class="mt-8 w-48 h-1 bg-white/5 rounded-full overflow-hidden">
+                    <div class="h-full bg-indigo-500 animate-[progress_3s_linear]"></div>
+                </div>
+                <style>@keyframes progress { from { width: 0%; } to { width: 100%; } }</style>
+            `;
+            document.body.appendChild(l);
+            setTimeout(() => {
+                window.location.reload();
+            }, 3000);
+        };
+
+        function showNotifOverlay() {
+            document.getElementById('overlay').classList.remove('hidden');
+            document.getElementById('loader-box').classList.remove('hidden');
+            document.getElementById('success-box').classList.add('hidden');
+            setTimeout(() => {
+                document.getElementById('loader-box').classList.add('hidden');
+                document.getElementById('success-box').classList.remove('hidden');
+            }, 1500);
+        }
+
+        function hideNotifOverlay() { document.getElementById('overlay').classList.add('hidden'); }
+
+        function initMesh() {
+            const c = document.getElementById('mesh-canvas');
+            const ctx = c.getContext('2d');
+            let w, h, p = [];
+            const resize = () => { w = c.width = window.innerWidth; h = c.height = window.innerHeight; };
+            resize();
+            for(let i=0; i<30; i++) p.push({x:Math.random()*w, y:Math.random()*h, vx:(Math.random()-0.5), vy:(Math.random()-0.5)});
+            function draw() {
+                ctx.clearRect(0,0,w,h);
+                ctx.strokeStyle = "rgba(99, 102, 241, 0.1)";
+                p.forEach(pt => {
+                    pt.x += pt.vx; pt.y += pt.vy;
+                    if(pt.x<0||pt.x>w) pt.vx*=-1; if(pt.y<0||pt.y>h) pt.vy*=-1;
+                    p.forEach(pt2 => {
+                        const d = Math.hypot(pt.x-pt2.x, pt.y-pt2.y);
+                        if(d<200) { ctx.beginPath(); ctx.moveTo(pt.x,pt.y); ctx.lineTo(pt2.x,pt2.y); ctx.stroke(); }
+                    });
+                });
+                requestAnimationFrame(draw);
+            }
+            draw();
+            window.addEventListener('resize', resize);
+        }
+    </script>
+</body>
+</html>

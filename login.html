@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlertAIQ | Secure Notification SaaS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+        }
+
+        .glass {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+
+        .loader-circle {
+            border: 4px solid #f1f5f9;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .auth-step { transition: all 0.3s ease; }
+        .hidden { display: none !important; }
+
+        .shimmer {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: shimmer-anim 1.5s infinite;
+        }
+        @keyframes shimmer-anim { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+    </style>
+</head>
+<body>
+
+    <!-- Auth System Overlay -->
+    <div id="auth-overlay" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 opacity-0 pointer-events-none">
+        <div class="glass max-w-md w-full rounded-[2.5rem] shadow-2xl p-8 relative transform scale-95 transition-transform duration-300" id="auth-card">
+            
+            <button onclick="UI.toggleAuth(false)" class="absolute top-6 right-6 text-slate-400 hover:text-slate-900 transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <!-- Step: Choice -->
+            <div id="step-choice" class="auth-step">
+                <div class="w-16 h-16 bg-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-xl shadow-indigo-200">
+                    <i class="fas fa-shield-check text-white text-2xl"></i>
+                </div>
+                <h2 class="text-3xl font-extrabold mb-2 tracking-tight">Access Secure.</h2>
+                <p class="text-slate-500 mb-8">Login to your AlertAIQ workspace.</p>
+                <div class="space-y-3">
+                    <button onclick="UI.goToStep('login')" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold hover:bg-indigo-700 transition">Sign In</button>
+                    <button onclick="UI.goToStep('register')" class="w-full bg-white text-slate-900 border-2 border-slate-100 py-4 rounded-2xl font-bold hover:bg-slate-50 transition">Register</button>
+                </div>
+            </div>
+
+            <!-- Step: Register -->
+            <div id="step-register" class="auth-step hidden">
+                <h3 class="text-2xl font-bold mb-1">Create Account</h3>
+                <p class="text-slate-500 text-sm mb-6">Enter your details to register.</p>
+                <form id="reg-form" onsubmit="Actions.register(event)" class="space-y-4">
+                    <input type="text" id="reg-name" placeholder="Full Name" required class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="email" id="reg-email" placeholder="Email Address" required class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                    <input type="password" id="reg-pass" placeholder="Password" required class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button type="submit" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-bold hover:bg-emerald-600 transition">Complete Registration</button>
+                </form>
+            </div>
+
+            <!-- Step: Success Circle -->
+            <div id="step-success" class="auth-step hidden text-center">
+                <div class="flex justify-center mb-6">
+                    <div class="loader-circle"></div>
+                </div>
+                <h3 class="text-2xl font-bold text-emerald-600 mb-2">Success!</h3>
+                <p class="text-slate-600 mb-8">You are successfully registered with <span class="font-bold">AlertAIQ</span>. Kindly login now.</p>
+                <button onclick="UI.goToStep('login')" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">Go to Login</button>
+            </div>
+
+            <!-- Step: Login -->
+            <div id="step-login" class="auth-step hidden">
+                <h3 class="text-2xl font-bold mb-6">Welcome Back</h3>
+                <div class="flex gap-2 mb-6">
+                    <button onclick="UI.setLoginMode('otp')" id="tab-otp" class="flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold">OTP</button>
+                    <button onclick="UI.setLoginMode('pass')" id="tab-pass" class="flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold">PASSWORD</button>
+                </div>
+                <div class="space-y-4">
+                    <input type="email" id="login-email" placeholder="Email Address" class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                    <input type="password" id="login-pass" placeholder="Password" class="hidden w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                </div>
+                <button onclick="Actions.loginInitiate()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold mt-6">Continue Verification</button>
+            </div>
+
+            <!-- Step: Verifying (The 3s delay) -->
+            <div id="step-verifying" class="auth-step hidden text-center py-10">
+                <div class="flex justify-center mb-6">
+                    <div class="loader-circle"></div>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Identity Verification</h3>
+                <p class="text-slate-500 text-sm">Validating credentials for 3 seconds...</p>
+            </div>
+
+            <!-- Step: OTP Entry -->
+            <div id="step-otp" class="auth-step hidden text-center">
+                <h3 class="text-2xl font-bold mb-2">Verify OTP</h3>
+                <p class="text-slate-500 text-sm mb-8">A code has been simulated for testing.</p>
+                <div class="flex justify-center gap-3 mb-8">
+                    <input type="text" maxlength="1" class="otp-input w-14 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl outline-none">
+                    <input type="text" maxlength="1" class="otp-input w-14 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl outline-none">
+                    <input type="text" maxlength="1" class="otp-input w-14 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl outline-none">
+                    <input type="text" maxlength="1" class="otp-input w-14 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl outline-none">
+                </div>
+                <button onclick="Actions.verifyOTP()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">Secure Login</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Layout -->
+    <div id="app-shell">
+        <nav class="fixed w-full z-50 glass px-6 py-4 shadow-sm flex justify-between items-center">
+            <div class="flex items-center space-x-3 cursor-pointer" onclick="location.reload()">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white"><i class="fas fa-bolt"></i></div>
+                <span class="text-2xl font-black text-slate-900">AlertA<span class="text-indigo-600">IQ</span></span>
+            </div>
+            <div id="nav-user">
+                <button onclick="UI.toggleAuth(true)" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm">Login / Register</button>
+            </div>
+        </nav>
+
+        <main class="pt-24 min-h-screen">
+            <!-- LANDING SECTION -->
+            <section id="view-landing" class="max-w-7xl mx-auto px-6 py-20 flex flex-col items-center text-center">
+                <h1 class="text-6xl md:text-8xl font-black tracking-tighter mb-8">
+                    Smart <span class="text-indigo-600">SaaS</span> <br>Alert Systems.
+                </h1>
+                <p class="text-xl text-slate-500 max-w-2xl mb-12">
+                    Build your notification workflow without infrastructure headaches. Pure backend-driven identity and data isolation.
+                </p>
+                <button onclick="UI.toggleAuth(true)" class="bg-indigo-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl shadow-indigo-200 hover:scale-105 transition">Start Your Workspace</button>
+            </section>
+
+            <!-- DASHBOARD SECTION (SINGLE PAGE) -->
+            <section id="view-dashboard" class="hidden max-w-7xl mx-auto px-6 py-10">
+                <div class="flex justify-between items-end mb-12">
+                    <div>
+                        <h2 class="text-4xl font-black">Welcome, <span id="dash-name" class="text-indigo-600">User</span></h2>
+                        <p id="dash-email" class="text-slate-500 font-medium"></p>
+                    </div>
+                    <button onclick="Actions.logout()" class="px-6 py-3 bg-white border rounded-2xl font-bold text-rose-600">Logout</button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 space-y-6">
+                        <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                            <h3 class="text-xl font-bold mb-8">Your Notification Feed</h3>
+                            <div id="feed-container" class="space-y-4">
+                                <!-- Isolated data loads here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-900 p-8 rounded-[2.5rem] text-white">
+                        <h4 class="text-xl font-bold mb-4">Identity Status</h4>
+                        <div class="space-y-4 opacity-80 text-sm">
+                            <div class="flex justify-between"><span>Method</span><span id="stat-method" class="uppercase font-bold">...</span></div>
+                            <div class="flex justify-between"><span>Session ID</span><span class="font-mono">#9283-AQS</span></div>
+                            <div class="flex justify-between"><span>Encryption</span><span class="text-emerald-400 font-bold">ACTIVE</span></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        /**
+         * BACKEND EMULATOR
+         * Replace these functions with your actual API fetch calls.
+         */
+        const Backend = {
+            // Simulated DB (In production, this is your PostgreSQL/MySQL/MongoDB)
+            users: JSON.parse(localStorage.getItem('aiq_users') || '{}'),
+
+            async register(user) {
+                if (this.users[user.email]) throw "Email already exists";
+                this.users[user.email] = { ...user, alerts: [
+                    { title: "Registration Successful", body: "Welcome to AlertAIQ. Your account is verified.", type: "system" }
+                ]};
+                localStorage.setItem('aiq_users', JSON.stringify(this.users));
+                return { success: true };
+            },
+
+            async verifyIdentity(email, password, isOtpMode) {
+                // The 3-second backend logic delay as requested
+                await new Promise(r => setTimeout(r, 3000));
+
+                const user = this.users[email];
+                if (!user) throw "Email not found in our records.";
+
+                if (!isOtpMode) {
+                    if (user.pass !== password) throw "Incorrect password for this account.";
+                }
+                
+                return { success: true, user };
+            },
+
+            async fetchAlerts(email) {
+                const user = this.users[email];
+                return user ? user.alerts : [];
+            }
+        };
+
+        /**
+         * UI CONTROLLER
+         */
+        const UI = {
+            loginMode: 'otp',
+            currentUser: null,
+
+            toggleAuth(show) {
+                const overlay = document.getElementById('auth-overlay');
+                const card = document.getElementById('auth-card');
+                overlay.style.opacity = show ? '1' : '0';
+                overlay.classList.toggle('pointer-events-none', !show);
+                card.style.transform = show ? 'scale(1)' : 'scale(0.95)';
+                if(show) this.goToStep('choice');
+            },
+
+            goToStep(step) {
+                document.querySelectorAll('.auth-step').forEach(s => s.classList.add('hidden'));
+                document.getElementById('step-' + step).classList.remove('hidden');
+            },
+
+            setLoginMode(mode) {
+                this.loginMode = mode;
+                document.getElementById('tab-otp').className = mode === 'otp' ? 'flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold';
+                document.getElementById('tab-pass').className = mode === 'pass' ? 'flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold';
+                document.getElementById('login-pass').classList.toggle('hidden', mode === 'otp');
+            },
+
+            renderDashboard(user, method) {
+                this.currentUser = user;
+                this.toggleAuth(false);
+                document.getElementById('view-landing').classList.add('hidden');
+                document.getElementById('view-dashboard').classList.remove('hidden');
+                
+                document.getElementById('dash-name').innerText = user.name;
+                document.getElementById('dash-email').innerText = user.email;
+                document.getElementById('stat-method').innerText = method;
+
+                document.getElementById('nav-user').innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm font-bold text-slate-400">${user.email}</span>
+                        <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
+                            ${user.name.charAt(0)}
+                        </div>
+                    </div>
+                `;
+
+                this.renderFeed(user.alerts);
+            },
+
+            renderFeed(alerts) {
+                const container = document.getElementById('feed-container');
+                container.innerHTML = alerts.map(a => `
+                    <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex justify-between items-center">
+                        <div class="flex gap-4 items-center">
+                            <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 border"><i class="fas fa-envelope-open"></i></div>
+                            <div>
+                                <div class="font-bold">${a.title}</div>
+                                <div class="text-sm text-slate-500">${a.body}</div>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-black uppercase tracking-widest px-2 py-1 bg-indigo-100 text-indigo-600 rounded-full">${a.type}</span>
+                    </div>
+                `).join('');
+            }
+        };
+
+        /**
+         * APP ACTIONS
+         */
+        const Actions = {
+            async register(e) {
+                e.preventDefault();
+                const user = {
+                    name: document.getElementById('reg-name').value,
+                    email: document.getElementById('reg-email').value,
+                    pass: document.getElementById('reg-pass').value
+                };
+
+                try {
+                    await Backend.register(user);
+                    UI.goToStep('success');
+                } catch (err) {
+                    alert(err);
+                }
+            },
+
+            async loginInitiate() {
+                const email = document.getElementById('login-email').value;
+                const pass = document.getElementById('login-pass').value;
+
+                if(!email) return alert("Please enter email");
+
+                UI.goToStep('verifying');
+
+                try {
+                    // This triggers the 3s delay in the Backend object
+                    const result = await Backend.verifyIdentity(email, pass, UI.loginMode === 'otp');
+                    
+                    if (UI.loginMode === 'otp') {
+                        UI.goToStep('otp');
+                    } else {
+                        UI.renderDashboard(result.user, 'Password');
+                    }
+                } catch (err) {
+                    alert(err);
+                    UI.goToStep('login');
+                }
+            },
+
+            async verifyOTP() {
+                // Simulate final verification
+                const email = document.getElementById('login-email').value;
+                UI.goToStep('verifying');
+                
+                try {
+                    const result = await Backend.verifyIdentity(email, '', true);
+                    UI.renderDashboard(result.user, 'OTP');
+                } catch (err) {
+                    alert(err);
+                    UI.goToStep('login');
+                }
+            },
+
+            logout() {
+                location.reload();
+            }
+        };
+
+        // OTP Input Auto-focus
+        document.querySelectorAll('.otp-input').forEach((box, i, arr) => {
+            box.addEventListener('input', () => { if(box.value && i < arr.length - 1) arr[i+1].focus(); });
+            box.addEventListener('keydown', (e) => { if(e.key === 'Backspace' && !box.value && i > 0) arr[i-1].focus(); });
+        });
+    </script>
+</body>
+</html>
