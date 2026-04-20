@@ -1,6 +1,7 @@
-const router = require("express").Router();
+const express = require("express");
+const router = express.Router();
 const Alert = require("../models/Alert");
-const auth = require("../middleware/auth");
+const auth = require("../middleware/authMiddleware");
 
 // CREATE ALERT
 router.post("/", auth, async (req, res) => {
@@ -16,7 +17,7 @@ router.post("/", auth, async (req, res) => {
 
 // GET ALERTS
 router.get("/", auth, async (req, res) => {
-  const alerts = await Alert.find({ userId: req.user.id });
+  const alerts = await Alert.find({ userId: req.user.id }).sort({ createdAt: -1 });
   res.json(alerts);
 });
 
