@@ -185,10 +185,9 @@
     <script>
         /**
          * BACKEND EMULATOR
-         * Replace these functions with your actual API fetch calls.
+         * Updated to mirror your Node.js/Express JWT authentication logic.
          */
         const Backend = {
-            // Simulated DB (In production, this is your PostgreSQL/MySQL/MongoDB)
             users: JSON.parse(localStorage.getItem('aiq_users') || '{}'),
 
             async register(user) {
@@ -200,18 +199,34 @@
                 return { success: true };
             },
 
-            async verifyIdentity(email, password, isOtpMode) {
-                // The 3-second backend logic delay as requested
+            async login(email, password, isOtpMode) {
+                // Identity Verification Delay
                 await new Promise(r => setTimeout(r, 3000));
 
+                // Equivalent to: const user = await User.findOne({ email });
                 const user = this.users[email];
-                if (!user) throw "Email not found in our records.";
+                if (!user) {
+                    // Equivalent to: return res.status(400).json({ msg: "User not found" });
+                    throw "User not found"; 
+                }
 
                 if (!isOtpMode) {
-                    if (user.pass !== password) throw "Incorrect password for this account.";
+                    // Equivalent to: const match = await bcrypt.compare(password, user.password);
+                    if (user.pass !== password) {
+                        // Equivalent to: return res.status(400).json({ msg: "Wrong password" });
+                        throw "Wrong password";
+                    }
                 }
                 
-                return { success: true, user };
+                // Equivalent to: const token = generateToken(user);
+                const mockToken = btoa(JSON.stringify({uid: user.email, exp: Date.now() + 3600}));
+
+                // Equivalent to: res.json({ success: true, token, user });
+                return {
+                    success: true,
+                    token: mockToken,
+                    user: user
+                };
             },
 
             async fetchAlerts(email) {
@@ -226,6 +241,7 @@
         const UI = {
             loginMode: 'otp',
             currentUser: null,
+            token: null,
 
             toggleAuth(show) {
                 const overlay = document.getElementById('auth-overlay');
@@ -248,26 +264,28 @@
                 document.getElementById('login-pass').classList.toggle('hidden', mode === 'otp');
             },
 
-            renderDashboard(user, method) {
-                this.currentUser = user;
+            renderDashboard(authResponse, method) {
+                this.currentUser = authResponse.user;
+                this.token = authResponse.token; // Store JWT equivalent
+                
                 this.toggleAuth(false);
                 document.getElementById('view-landing').classList.add('hidden');
                 document.getElementById('view-dashboard').classList.remove('hidden');
                 
-                document.getElementById('dash-name').innerText = user.name;
-                document.getElementById('dash-email').innerText = user.email;
+                document.getElementById('dash-name').innerText = this.currentUser.name;
+                document.getElementById('dash-email').innerText = this.currentUser.email;
                 document.getElementById('stat-method').innerText = method;
 
                 document.getElementById('nav-user').innerHTML = `
                     <div class="flex items-center gap-3">
-                        <span class="text-sm font-bold text-slate-400">${user.email}</span>
+                        <span class="text-sm font-bold text-slate-400">${this.currentUser.email}</span>
                         <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-                            ${user.name.charAt(0)}
+                            ${this.currentUser.name.charAt(0)}
                         </div>
                     </div>
                 `;
 
-                this.renderFeed(user.alerts);
+                this.renderFeed(this.currentUser.alerts);
             },
 
             renderFeed(alerts) {
@@ -316,13 +334,12 @@
                 UI.goToStep('verifying');
 
                 try {
-                    // This triggers the 3s delay in the Backend object
-                    const result = await Backend.verifyIdentity(email, pass, UI.loginMode === 'otp');
+                    const result = await Backend.login(email, pass, UI.loginMode === 'otp');
                     
                     if (UI.loginMode === 'otp') {
                         UI.goToStep('otp');
                     } else {
-                        UI.renderDashboard(result.user, 'Password');
+                        UI.renderDashboard(result, 'Password');
                     }
                 } catch (err) {
                     alert(err);
@@ -331,13 +348,12 @@
             },
 
             async verifyOTP() {
-                // Simulate final verification
                 const email = document.getElementById('login-email').value;
                 UI.goToStep('verifying');
                 
                 try {
-                    const result = await Backend.verifyIdentity(email, '', true);
-                    UI.renderDashboard(result.user, 'OTP');
+                    const result = await Backend.login(email, '', true);
+                    UI.renderDashboard(result, 'OTP');
                 } catch (err) {
                     alert(err);
                     UI.goToStep('login');
