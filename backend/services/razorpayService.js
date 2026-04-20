@@ -1,4 +1,4 @@
-const Razorpay = require("razorpay");
+const Razorpay = require("razorpayService");
 
 const razorpay = new Razorpay({
   key_id: process.env.RZP_KEY,
