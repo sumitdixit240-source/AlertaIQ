@@ -4,11 +4,13 @@ const cors = require("cors");
 require("dotenv").config();
 require("./jobs/cron"); // IMPORTANT - start cron job
 
+const app = express();
+
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/payment", require("./routes/payment"));
 app.use("/api/alerts", require("./routes/alert"));
 
-const app = express();
+
 
 app.use(cors());
 app.use(express.json());
