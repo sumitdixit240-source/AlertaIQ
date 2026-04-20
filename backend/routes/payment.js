@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const razorpay = require("../services/razorpay");
+const razorpay = require("./routes/razorpay");
 
 router.post("/create-order", async (req, res) => {
   const options = {
