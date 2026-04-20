@@ -18,7 +18,7 @@ app.get("/", (req, res) => {
 /* ================= ROUTES ================= */
 app.use("/api/auth", require("./routes/auth"));
 app.use("/api/payment", require("./routes/payment"));
-app.use("/api/razorpay", require("./services/razorpay")); // FIXED (separate file)
+app.use("/api/razorpay", require("./routes/razorpay")); // FIXED (separate file)
 app.use("/api/alerts", require("./routes/alert"));
 app.use("/api/mailer", require("./routes/mailer"));
 app.use("/api/ai", require("./routes/ai"));
