@@ -1,6 +1,6 @@
 const express = require("express");
 const router = express.Router();
-const OTP = require("../models/OTP");
+const OTP = require("./models/OTP");
 const nodemailer = require("nodemailer");
 
 function generateOTP() {
