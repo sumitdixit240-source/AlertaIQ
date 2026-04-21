@@ -1,11 +1,13 @@
 const mongoose = require("mongoose");
 
-const AlertSchema = new mongoose.Schema({
+const alertSchema = new mongoose.Schema({
   userId: String,
-  email: String,
-  message: String,
-  interval: Number,
-  nextRun: Date
+  category: String,
+  subCategory: String,
+  amount: Number,
+  expiry: Date,
+  frequency: String,
+  createdAt: { type: Date, default: Date.now }
 });
 
-module.exports = mongoose.model("Alert", AlertSchema);
+module.exports = mongoose.model("Alert", alertSchema);
