@@ -1,9 +1,13 @@
 const mongoose = require("mongoose");
 
-const userSchema = new mongoose.Schema({
-  name: String,
-  email: String,
-  password: String
-});
+const connectDB = async () => {
+  try {
+    await mongoose.connect(process.env.MONGO_URI);
+    console.log("MongoDB Connected");
+  } catch (err) {
+    console.log(err);
+    process.exit(1);
+  }
+};
 
-module.exports = mongoose.models.User || mongoose.model("User", userSchema);
+module.exports = connectDB;
