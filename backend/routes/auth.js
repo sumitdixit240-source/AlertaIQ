@@ -3,9 +3,9 @@ const bcrypt from "bcryptjs";
 const jwt from "jsonwebtoken";
 
 const User from "../models/User.js";
-const OTP from "../models/OTP.cjs";
-const sendMail from "../services/mailer.cjs";
-const generateOTP from "../utils/generateOTP.cjs";
+const OTP from "../models/OTP.js";
+const sendMail from "../services/mailer.js";
+const generateOTP from "../utils/generateOTP.js";
 
 const router = express.Router();
 
