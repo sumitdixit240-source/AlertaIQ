@@ -3,10 +3,10 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const otpStore = require("../utils/otpStore");
 
-const User from "../models/User.js";
-const OTP from "../models/OTP.js";
-const sendMail from "../services/mailer.js";
-const generateOTP from "../utils/generateOTP.js";
+const User = require("../models/User");
+const OTP = require("../models/OTP");
+const sendMail = require("../services/mailer");
+const generateOTP = require("../utils/generateOTP");
 
 const router = express.Router();
 
