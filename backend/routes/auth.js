@@ -1,67 +1,119 @@
-import express from "express";
+const express = require("express");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+const User = require("../models/User");
+const OTP = require("../models/OTP");
+const sendMail = require("../services/mailer");
+const generateOTP = require("../utils/generateOTP");
 
 const router = express.Router();
 
-// ================= TEST ROUTE =================
-router.get("/", (req, res) => {
-    res.json({
-        success: true,
-        message: "Auth route working 🚀"
-    });
-});
 
-// ================= REGISTER =================
+// ===================== REGISTER =====================
 router.post("/register", async (req, res) => {
-    try {
-        const { name, email, password } = req.body;
+  try {
+    const { name, email, password } = req.body;
 
-        if (!name || !email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "All fields are required"
-            });
-        }
+    const existing = await User.findOne({ email });
+    if (existing) return res.status(400).json({ msg: "User already exists" });
 
-        // TODO: add DB logic later
-        res.json({
-            success: true,
-            message: "User registered successfully (demo)",
-            user: { name, email }
-        });
+    const hashed = await bcrypt.hash(password, 10);
 
-    } catch (error) {
-        console.error("Auth Error:", error.message);
-        res.status(500).json({
-            success: false,
-            message: "Registration failed"
-        });
-    }
+    const user = await User.create({
+      name,
+      email,
+      password: hashed
+    });
+
+    await sendMail(
+      email,
+      "AlertAIQ Account Created",
+      `Welcome ${name}, your account has been created successfully.`
+    );
+
+    res.json({ msg: "Account created", user });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
 });
 
-// ================= LOGIN =================
+
+// ===================== SEND OTP =====================
+router.post("/send-otp", async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ msg: "User not found" });
+
+    const otp = generateOTP();
+
+    await OTP.create({ email, otp });
+
+    await sendMail(
+      email,
+      "AlertAIQ OTP Verification",
+      `Your OTP is: ${otp}. It is valid for 5 minutes.`
+    );
+
+    res.json({ msg: "OTP sent to email" });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+
+// ===================== LOGIN (PASSWORD) =====================
 router.post("/login", async (req, res) => {
-    try {
-        const { email, password } = req.body;
+  try {
+    const { email, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: "Email and password required"
-            });
-        }
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ msg: "User not found" });
 
-        res.json({
-            success: true,
-            message: "Login successful (demo)"
-        });
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(400).json({ msg: "Wrong password" });
 
-    } catch (error) {
-        console.error("Login Error:", error.message);
-        res.status(500).json({
-            success: false,
-            message: "Login failed"
-        });
-    }
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({ token, user });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
 });
 
-export default router;
+
+// ===================== VERIFY OTP LOGIN =====================
+router.post("/verify-otp", async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    const record = await OTP.findOne({ email, otp });
+    if (!record) return res.status(400).json({ msg: "Invalid OTP" });
+
+    const user = await User.findOne({ email });
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    await sendMail(
+      email,
+      "AlertAIQ Login Alert",
+      `Login successful at ${new Date().toLocaleString()}`
+    );
+
+    res.json({ token, user });
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
+module.exports = router;
