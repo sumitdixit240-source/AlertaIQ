@@ -34,13 +34,6 @@
 
         .auth-step { transition: all 0.3s ease; }
         .hidden { display: none !important; }
-
-        .shimmer {
-            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
-            background-size: 200% 100%;
-            animation: shimmer-anim 1.5s infinite;
-        }
-        @keyframes shimmer-anim { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
     </style>
 </head>
 <body>
@@ -70,7 +63,7 @@
             <div id="step-register" class="auth-step hidden">
                 <h3 class="text-2xl font-bold mb-1">Create Account</h3>
                 <p class="text-slate-500 text-sm mb-6">Enter your details to register.</p>
-                <form id="reg-form" onsubmit="Actions.register(event)" class="space-y-4">
+                <form onsubmit="Actions.register(event)" class="space-y-4">
                     <input type="text" id="reg-name" placeholder="Full Name" required class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
                     <input type="email" id="reg-email" placeholder="Email Address" required class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
                     <input type="password" id="reg-pass" placeholder="Password" required class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
@@ -84,7 +77,7 @@
                     <div class="loader-circle"></div>
                 </div>
                 <h3 class="text-2xl font-bold text-emerald-600 mb-2">Success!</h3>
-                <p class="text-slate-600 mb-8">You are successfully registered with <span class="font-bold">AlertAIQ</span>. Kindly login now.</p>
+                <p class="text-slate-600 mb-8">You are successfully registered. Kindly login now.</p>
                 <button onclick="UI.goToStep('login')" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">Go to Login</button>
             </div>
 
@@ -102,19 +95,19 @@
                 <button onclick="Actions.loginInitiate()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold mt-6">Continue Verification</button>
             </div>
 
-            <!-- Step: Verifying (The 3s delay) -->
+            <!-- Step: Verifying -->
             <div id="step-verifying" class="auth-step hidden text-center py-10">
                 <div class="flex justify-center mb-6">
                     <div class="loader-circle"></div>
                 </div>
                 <h3 class="text-xl font-bold mb-2">Identity Verification</h3>
-                <p class="text-slate-500 text-sm">Validating credentials for 3 seconds...</p>
+                <p class="text-slate-500 text-sm">Validating credentials...</p>
             </div>
 
             <!-- Step: OTP Entry -->
             <div id="step-otp" class="auth-step hidden text-center">
                 <h3 class="text-2xl font-bold mb-2">Verify OTP</h3>
-                <p class="text-slate-500 text-sm mb-8">A code has been simulated for testing.</p>
+                <p class="text-slate-500 text-sm mb-8">Enter your security code.</p>
                 <div class="flex justify-center gap-3 mb-8">
                     <input type="text" maxlength="1" class="otp-input w-14 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl outline-none">
                     <input type="text" maxlength="1" class="otp-input w-14 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl outline-none">
@@ -127,249 +120,93 @@
     </div>
 
     <!-- Application Layout -->
-    <div id="app-shell">
-        <nav class="fixed w-full z-50 glass px-6 py-4 shadow-sm flex justify-between items-center">
-            <div class="flex items-center space-x-3 cursor-pointer" onclick="location.reload()">
-                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white"><i class="fas fa-bolt"></i></div>
-                <span class="text-2xl font-black text-slate-900">AlertA<span class="text-indigo-600">IQ</span></span>
-            </div>
-            <div id="nav-user">
-                <button onclick="UI.toggleAuth(true)" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm">Login / Register</button>
-            </div>
-        </nav>
+    <nav class="fixed w-full z-50 glass px-6 py-4 shadow-sm flex justify-between items-center">
+        <div class="flex items-center space-x-3 cursor-pointer" onclick="location.reload()">
+            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white"><i class="fas fa-bolt"></i></div>
+            <span class="text-2xl font-black text-slate-900">AlertA<span class="text-indigo-600">IQ</span></span>
+        </div>
+        <button onclick="UI.toggleAuth(true)" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm">Login / Register</button>
+    </nav>
 
-        <main class="pt-24 min-h-screen">
-            <!-- LANDING SECTION -->
-            <section id="view-landing" class="max-w-7xl mx-auto px-6 py-20 flex flex-col items-center text-center">
-                <h1 class="text-6xl md:text-8xl font-black tracking-tighter mb-8">
-                    Smart <span class="text-indigo-600">SaaS</span> <br>Alert Systems.
-                </h1>
-                <p class="text-xl text-slate-500 max-w-2xl mb-12">
-                    Build your notification workflow without infrastructure headaches. Pure backend-driven identity and data isolation.
-                </p>
-                <button onclick="UI.toggleAuth(true)" class="bg-indigo-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl shadow-indigo-200 hover:scale-105 transition">Start Your Workspace</button>
-            </section>
-
-            <!-- DASHBOARD SECTION (SINGLE PAGE) -->
-            <section id="view-dashboard" class="hidden max-w-7xl mx-auto px-6 py-10">
-                <div class="flex justify-between items-end mb-12">
-                    <div>
-                        <h2 class="text-4xl font-black">Welcome, <span id="dash-name" class="text-indigo-600">User</span></h2>
-                        <p id="dash-email" class="text-slate-500 font-medium"></p>
-                    </div>
-                    <button onclick="Actions.logout()" class="px-6 py-3 bg-white border rounded-2xl font-bold text-rose-600">Logout</button>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 space-y-6">
-                        <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
-                            <h3 class="text-xl font-bold mb-8">Your Notification Feed</h3>
-                            <div id="feed-container" class="space-y-4">
-                                <!-- Isolated data loads here -->
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-slate-900 p-8 rounded-[2.5rem] text-white">
-                        <h4 class="text-xl font-bold mb-4">Identity Status</h4>
-                        <div class="space-y-4 opacity-80 text-sm">
-                            <div class="flex justify-between"><span>Method</span><span id="stat-method" class="uppercase font-bold">...</span></div>
-                            <div class="flex justify-between"><span>Session ID</span><span class="font-mono">#9283-AQS</span></div>
-                            <div class="flex justify-between"><span>Encryption</span><span class="text-emerald-400 font-bold">ACTIVE</span></div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-        </main>
-    </div>
+    <main class="pt-40 min-h-screen max-w-7xl mx-auto px-6 text-center">
+        <h1 class="text-7xl font-black tracking-tighter mb-8 text-slate-900">
+            Automated <span class="text-indigo-600">Incident</span> <br>Intelligence.
+        </h1>
+        <p class="text-xl text-slate-500 max-w-2xl mx-auto mb-12">
+            The world's most secure notification router. High-performance, low-latency infrastructure for modern SaaS teams.
+        </p>
+        <button onclick="UI.toggleAuth(true)" class="bg-indigo-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl shadow-indigo-200">Get Started Now</button>
+    </main>
 
     <script>
-        /**
-         * BACKEND EMULATOR
-         * Updated to mirror your Node.js/Express JWT authentication logic.
-         */
         const Backend = {
             users: JSON.parse(localStorage.getItem('aiq_users') || '{}'),
-
             async register(user) {
                 if (this.users[user.email]) throw "Email already exists";
-                this.users[user.email] = { ...user, alerts: [
-                    { title: "Registration Successful", body: "Welcome to AlertAIQ. Your account is verified.", type: "system" }
-                ]};
+                this.users[user.email] = { ...user, alerts: [{ title: "Welcome", body: "Account provisioned.", type: "system" }] };
                 localStorage.setItem('aiq_users', JSON.stringify(this.users));
                 return { success: true };
             },
-
             async login(email, password, isOtpMode) {
-                // Identity Verification Delay
-                await new Promise(r => setTimeout(r, 3000));
-
-                // Equivalent to: const user = await User.findOne({ email });
+                await new Promise(r => setTimeout(r, 2000));
                 const user = this.users[email];
-                if (!user) {
-                    // Equivalent to: return res.status(400).json({ msg: "User not found" });
-                    throw "User not found"; 
-                }
-
-                if (!isOtpMode) {
-                    // Equivalent to: const match = await bcrypt.compare(password, user.password);
-                    if (user.pass !== password) {
-                        // Equivalent to: return res.status(400).json({ msg: "Wrong password" });
-                        throw "Wrong password";
-                    }
-                }
-                
-                // Equivalent to: const token = generateToken(user);
-                const mockToken = btoa(JSON.stringify({uid: user.email, exp: Date.now() + 3600}));
-
-                // Equivalent to: res.json({ success: true, token, user });
-                return {
-                    success: true,
-                    token: mockToken,
-                    user: user
-                };
-            },
-
-            async fetchAlerts(email) {
-                const user = this.users[email];
-                return user ? user.alerts : [];
+                if (!user) throw "User not found";
+                if (!isOtpMode && user.pass !== password) throw "Wrong password";
+                return { success: true, user };
             }
         };
 
-        /**
-         * UI CONTROLLER
-         */
         const UI = {
             loginMode: 'otp',
-            currentUser: null,
-            token: null,
-
             toggleAuth(show) {
                 const overlay = document.getElementById('auth-overlay');
-                const card = document.getElementById('auth-card');
                 overlay.style.opacity = show ? '1' : '0';
                 overlay.classList.toggle('pointer-events-none', !show);
-                card.style.transform = show ? 'scale(1)' : 'scale(0.95)';
+                document.getElementById('auth-card').style.transform = show ? 'scale(1)' : 'scale(0.95)';
                 if(show) this.goToStep('choice');
             },
-
             goToStep(step) {
                 document.querySelectorAll('.auth-step').forEach(s => s.classList.add('hidden'));
                 document.getElementById('step-' + step).classList.remove('hidden');
             },
-
             setLoginMode(mode) {
                 this.loginMode = mode;
                 document.getElementById('tab-otp').className = mode === 'otp' ? 'flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold';
                 document.getElementById('tab-pass').className = mode === 'pass' ? 'flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold';
                 document.getElementById('login-pass').classList.toggle('hidden', mode === 'otp');
             },
-
-            renderDashboard(authResponse, method) {
-                this.currentUser = authResponse.user;
-                this.token = authResponse.token; // Store JWT equivalent
-                
-                this.toggleAuth(false);
-                document.getElementById('view-landing').classList.add('hidden');
-                document.getElementById('view-dashboard').classList.remove('hidden');
-                
-                document.getElementById('dash-name').innerText = this.currentUser.name;
-                document.getElementById('dash-email').innerText = this.currentUser.email;
-                document.getElementById('stat-method').innerText = method;
-
-                document.getElementById('nav-user').innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <span class="text-sm font-bold text-slate-400">${this.currentUser.email}</span>
-                        <div class="w-10 h-10 bg-indigo-100 rounded-full flex items-center justify-center text-indigo-600 font-bold">
-                            ${this.currentUser.name.charAt(0)}
-                        </div>
-                    </div>
-                `;
-
-                this.renderFeed(this.currentUser.alerts);
-            },
-
-            renderFeed(alerts) {
-                const container = document.getElementById('feed-container');
-                container.innerHTML = alerts.map(a => `
-                    <div class="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex justify-between items-center">
-                        <div class="flex gap-4 items-center">
-                            <div class="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-indigo-600 border"><i class="fas fa-envelope-open"></i></div>
-                            <div>
-                                <div class="font-bold">${a.title}</div>
-                                <div class="text-sm text-slate-500">${a.body}</div>
-                            </div>
-                        </div>
-                        <span class="text-[10px] font-black uppercase tracking-widest px-2 py-1 bg-indigo-100 text-indigo-600 rounded-full">${a.type}</span>
-                    </div>
-                `).join('');
+            completeAuth(user) {
+                localStorage.setItem('aiq_session', JSON.stringify(user));
+                window.location.href = 'dashboard.html';
             }
         };
 
-        /**
-         * APP ACTIONS
-         */
         const Actions = {
             async register(e) {
                 e.preventDefault();
-                const user = {
-                    name: document.getElementById('reg-name').value,
-                    email: document.getElementById('reg-email').value,
-                    pass: document.getElementById('reg-pass').value
-                };
-
-                try {
-                    await Backend.register(user);
-                    UI.goToStep('success');
-                } catch (err) {
-                    alert(err);
-                }
+                const user = { name: document.getElementById('reg-name').value, email: document.getElementById('reg-email').value, pass: document.getElementById('reg-pass').value };
+                try { await Backend.register(user); UI.goToStep('success'); } catch (err) { alert(err); }
             },
-
             async loginInitiate() {
                 const email = document.getElementById('login-email').value;
                 const pass = document.getElementById('login-pass').value;
-
-                if(!email) return alert("Please enter email");
-
+                if(!email) return;
                 UI.goToStep('verifying');
-
                 try {
                     const result = await Backend.login(email, pass, UI.loginMode === 'otp');
-                    
-                    if (UI.loginMode === 'otp') {
-                        UI.goToStep('otp');
-                    } else {
-                        UI.renderDashboard(result, 'Password');
-                    }
-                } catch (err) {
-                    alert(err);
-                    UI.goToStep('login');
-                }
+                    if (UI.loginMode === 'otp') UI.goToStep('otp');
+                    else UI.completeAuth(result.user);
+                } catch (err) { alert(err); UI.goToStep('login'); }
             },
-
             async verifyOTP() {
                 const email = document.getElementById('login-email').value;
                 UI.goToStep('verifying');
-                
                 try {
                     const result = await Backend.login(email, '', true);
-                    UI.renderDashboard(result, 'OTP');
-                } catch (err) {
-                    alert(err);
-                    UI.goToStep('login');
-                }
-            },
-
-            logout() {
-                location.reload();
+                    UI.completeAuth(result.user);
+                } catch (err) { alert(err); UI.goToStep('login'); }
             }
         };
-
-        // OTP Input Auto-focus
-        document.querySelectorAll('.otp-input').forEach((box, i, arr) => {
-            box.addEventListener('input', () => { if(box.value && i < arr.length - 1) arr[i+1].focus(); });
-            box.addEventListener('keydown', (e) => { if(e.key === 'Backspace' && !box.value && i > 0) arr[i-1].focus(); });
-        });
     </script>
 </body>
 </html>
