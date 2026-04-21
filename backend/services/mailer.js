@@ -1,17 +1,26 @@
 const nodemailer = require("nodemailer");
 
 const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // 🔐 SSL required for Gmail
   auth: {
     user: process.env.EMAIL,
-    pass: process.env.EMAIL_PASS
+    pass: process.env.EMAIL_PASS // ⚠️ MUST be Gmail App Password
+  },
+  tls: {
+    rejectUnauthorized: false
   }
 });
 
-// optional debug
-transporter.verify((err) => {
-  if (err) console.log("❌ Email error:", err);
-  else console.log("✅ Email server ready");
+// 🔍 Strong debug (better than silent verify)
+transporter.verify((err, success) => {
+  if (err) {
+    console.log("❌ Email connection failed:");
+    console.log(err);
+  } else {
+    console.log("✅ Email server ready to send messages");
+  }
 });
 
 module.exports = transporter;
