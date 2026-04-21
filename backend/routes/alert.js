@@ -1,68 +1,41 @@
-const express = require("express");
-const Alert = require("../models/Alert");
-const sendMail = require("../services/mailer");
-const auth = require("../middleware/authMiddleware");
+import express from "express";
 
 const router = express.Router();
 
-
-// ===================== CREATE ALERT =====================
-router.post("/create", auth, async (req, res) => {
-  try {
-    const { category, subCategory, amount, expiry, frequency, email } = req.body;
-
-    const alert = await Alert.create({
-      userId: req.user.id,
-      category,
-      subCategory,
-      amount,
-      expiry,
-      frequency
+// ================= TEST ROUTE =================
+router.get("/", (req, res) => {
+    res.json({
+        success: true,
+        message: "Alert route working 🚀"
     });
-
-    await sendMail(
-      email,
-      "AlertAIQ - Alert Created",
-      `
-Alert Created Successfully:
-
-Service: ${subCategory}
-Category: ${category}
-Amount: ₹${amount}
-Expiry: ${expiry}
-Frequency: ${frequency}
-
-You will receive automated reminders based on your settings.
-      `
-    );
-
-    res.json({ msg: "Alert created successfully", alert });
-
-  } catch (err) {
-    res.status(500).json({ msg: err.message });
-  }
 });
 
+// ================= CREATE ALERT =================
+router.post("/create", async (req, res) => {
+    try {
+        const { title, message } = req.body;
 
-// ===================== GET USER ALERTS =====================
-router.get("/", auth, async (req, res) => {
-  try {
-    const alerts = await Alert.find({ userId: req.user.id });
-    res.json(alerts);
-  } catch (err) {
-    res.status(500).json({ msg: err.message });
-  }
+        if (!title || !message) {
+            return res.status(400).json({
+                success: false,
+                message: "Title and message are required"
+            });
+        }
+
+        // TODO: Save to MongoDB (next step)
+        res.json({
+            success: true,
+            message: "Alert created successfully",
+            data: { title, message }
+        });
+
+    } catch (error) {
+        console.error("Alert Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to create alert"
+        });
+    }
 });
 
-
-// ===================== DELETE ALERT =====================
-router.delete("/:id", auth, async (req, res) => {
-  try {
-    await Alert.deleteOne({ _id: req.params.id, userId: req.user.id });
-    res.json({ msg: "Alert deleted" });
-  } catch (err) {
-    res.status(500).json({ msg: err.message });
-  }
-});
-
-module.exports = router;
+export default router;
