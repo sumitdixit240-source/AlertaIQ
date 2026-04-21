@@ -8,13 +8,10 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-const sendMail = async (to, subject, text) => {
-  await transporter.sendMail({
-    from: "AlertAIQ <alertaiq6@gmail.com>",
-    to,
-    subject,
-    text
-  });
-};
+// optional debug
+transporter.verify((err) => {
+  if (err) console.log("❌ Email error:", err);
+  else console.log("✅ Email server ready");
+});
 
-module.exports = sendMail;
+module.exports = transporter;
