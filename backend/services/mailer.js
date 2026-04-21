@@ -10,38 +10,27 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// verify connection
 transporter.verify((err) => {
   if (err) {
-    console.log("❌ Email connection failed:", err.message);
+    console.log("❌ Email error:", err.message);
   } else {
-    console.log("✅ Email server ready");
+    console.log("✅ Email ready");
   }
 });
 
-// ✅ OTP function (THIS IS WHAT YOU SHOULD EXPORT)
 const sendEmailOTP = async (email, otp) => {
-  try {
-    const info = await transporter.sendMail({
-      from: `"AlertAIQ" <${process.env.EMAIL}>`,
-      to: email,
-      subject: "Your OTP Code",
-      html: `
-        <div style="font-family:Arial">
-          <h2>AlertAIQ OTP Verification</h2>
-          <p>Your OTP is:</p>
-          <h1 style="color:#4f46e5">${otp}</h1>
-          <p>This OTP is valid for 5 minutes.</p>
-        </div>
-      `
-    });
-
-    console.log("📩 Email sent:", info.messageId);
-    return true;
-  } catch (err) {
-    console.log("❌ Email send failed:", err);
-    return false;
-  }
+  await transporter.sendMail({
+    from: `"AlertAIQ" <${process.env.EMAIL}>`,
+    to: email,
+    subject: "Your OTP Code",
+    html: `
+      <div>
+        <h2>AlertAIQ Verification OTP</h2>
+        <h1 style="color:#4f46e5">${otp}</h1>
+        <p>This OTP expires in 5 minutes.</p>
+      </div>
+    `
+  });
 };
 
 module.exports = { sendEmailOTP };
