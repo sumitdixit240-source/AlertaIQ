@@ -1,11 +1,11 @@
 const express = require("express");
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
+const bcrypt from "bcryptjs";
+const jwt from "jsonwebtoken";
 
-import User from "../models/User.js";
-import OTP from "../models/OTP.cjs";
-import sendMail from "../services/mailer.cjs";
-import generateOTP from "../utils/generateOTP.cjs";
+const User from "../models/User.js";
+const OTP from "../models/OTP.cjs";
+const sendMail from "../services/mailer.cjs";
+const generateOTP from "../utils/generateOTP.cjs";
 
 const router = express.Router();
 
