@@ -1,69 +1,67 @@
-const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
-
-const User = require("../models/User");
-const OTP = require("../models/OTP");
-const sendMail = require("../services/mailer");
-const generateOTP = require("../utils/generateOTP");
+import express from "express";
 
 const router = express.Router();
 
+// ================= TEST ROUTE =================
+router.get("/", (req, res) => {
+    res.json({
+        success: true,
+        message: "Auth route working 🚀"
+    });
+});
 
-// REGISTER
+// ================= REGISTER =================
 router.post("/register", async (req, res) => {
-  const { name, email, password } = req.body;
+    try {
+        const { name, email, password } = req.body;
 
-  const hash = await bcrypt.hash(password, 10);
+        if (!name || !email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "All fields are required"
+            });
+        }
 
-  await User.create({ name, email, password: hash });
+        // TODO: add DB logic later
+        res.json({
+            success: true,
+            message: "User registered successfully (demo)",
+            user: { name, email }
+        });
 
-  res.json({ msg: "Account created successfully" });
+    } catch (error) {
+        console.error("Auth Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Registration failed"
+        });
+    }
 });
 
-
-// SEND OTP
-router.post("/send-otp", async (req, res) => {
-  const { email } = req.body;
-
-  const otp = generateOTP();
-
-  await OTP.create({ email, otp });
-
-  await sendMail(email, "AlertAIQ OTP", `Your OTP is ${otp}`);
-
-  res.json({ msg: "OTP sent" });
-});
-
-
-// LOGIN PASSWORD
+// ================= LOGIN =================
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+    try {
+        const { email, password } = req.body;
 
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ msg: "User not found" });
+        if (!email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: "Email and password required"
+            });
+        }
 
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(400).json({ msg: "Wrong password" });
+        res.json({
+            success: true,
+            message: "Login successful (demo)"
+        });
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-
-  res.json({ token, user });
+    } catch (error) {
+        console.error("Login Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Login failed"
+        });
+    }
 });
 
-
-// LOGIN OTP VERIFY
-router.post("/verify-otp", async (req, res) => {
-  const { email, otp } = req.body;
-
-  const record = await OTP.findOne({ email, otp });
-  if (!record) return res.status(400).json({ msg: "Invalid OTP" });
-
-  const user = await User.findOne({ email });
-
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
-
-  res.json({ token, user });
-});
-
-module.exports = router;
+export default router;
