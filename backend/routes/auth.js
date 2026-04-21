@@ -5,7 +5,7 @@ const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 const OTP = require("../models/otp");
 
-const sendMail = require("../services/mailer");
+const sendMail = require("../services/nodemailer");
 const generateOTP = require("../utils/generateOTP");
 
 const router = express.Router();
