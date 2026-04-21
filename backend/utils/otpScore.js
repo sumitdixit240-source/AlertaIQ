@@ -1,37 +1,29 @@
 const otpStore = new Map();
 
-/*
-Structure:
-email => {
-  otp: "1234",
-  expiresAt: timestamp
-}
-*/
-
-// Add OTP with 5 min expiry
+// Save OTP
 otpStore.setOtp = (email, otp) => {
   otpStore.set(email, {
     otp,
-    expiresAt: Date.now() + 5 * 60 * 1000 // 5 minutes
+    expiresAt: Date.now() + 5 * 60 * 1000 // 5 min
   });
 };
 
 // Verify OTP
 otpStore.verifyOtp = (email, otp) => {
-  const record = otpStore.get(email);
+  const data = otpStore.get(email);
 
-  if (!record) return { valid: false, message: "OTP not found" };
+  if (!data) return { valid: false, message: "OTP not found" };
 
-  if (Date.now() > record.expiresAt) {
+  if (Date.now() > data.expiresAt) {
     otpStore.delete(email);
     return { valid: false, message: "OTP expired" };
   }
 
-  if (record.otp !== otp) {
+  if (data.otp !== otp) {
     return { valid: false, message: "Invalid OTP" };
   }
 
-  otpStore.delete(email); // one-time use
+  otpStore.delete(email);
   return { valid: true };
 };
 
