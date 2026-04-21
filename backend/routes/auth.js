@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/User");
-const OTP = require("../models/otp");
+const OTP = require("../models/OTP");
 
 const sendMail = require("../services/mailer");
 const generateOTP = require("../utils/generateOTP");
@@ -35,6 +35,7 @@ router.post("/register", async (req, res) => {
     );
 
     res.json({ msg: "Account created", user });
+
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
@@ -52,7 +53,6 @@ router.post("/send-otp", async (req, res) => {
 
     const otp = generateOTP();
 
-    // save OTP in DB (auto delete after 5 min via schema expires)
     await OTP.create({ email, otp });
 
     await sendMail(
@@ -62,6 +62,7 @@ router.post("/send-otp", async (req, res) => {
     );
 
     res.json({ msg: "OTP sent successfully" });
+
   } catch (err) {
     console.log("OTP ERROR:", err);
     res.status(500).json({ msg: "Failed to send OTP" });
@@ -79,9 +80,10 @@ router.post("/verify-otp", async (req, res) => {
     if (!record)
       return res.status(400).json({ msg: "Invalid or expired OTP" });
 
-    await OTP.deleteMany({ email }); // cleanup after success
+    await OTP.deleteMany({ email });
 
     res.json({ msg: "OTP verified successfully" });
+
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
@@ -108,6 +110,7 @@ router.post("/login", async (req, res) => {
     );
 
     res.json({ token, user });
+
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
