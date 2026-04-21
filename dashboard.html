@@ -90,6 +90,13 @@
             box-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
             border: 1px solid rgba(168, 85, 247, 0.5);
         }
+        
+        .upgrade-anim { animation: pulsePurple 2s infinite; }
+        @keyframes pulsePurple {
+            0% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0.4); }
+            70% { box-shadow: 0 0 0 15px rgba(168, 85, 247, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(168, 85, 247, 0); }
+        }
     </style>
 </head>
 <body class="antialiased">
@@ -102,16 +109,37 @@
             <h2 id="overlay-title" class="text-2xl font-bold text-white mb-2">Processing Node</h2>
             <p id="overlay-sub" class="text-slate-400">Deploying AI monitors...</p>
         </div>
+
+        <!-- Default Success -->
         <div id="success-box" class="hidden flex flex-col items-center">
             <div class="w-20 h-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center text-4xl mb-6 border border-emerald-500/20">
                 <i class="fas fa-envelope-open-text"></i>
             </div>
             <h2 class="text-2xl font-bold text-white mb-2">Kindly check your confirmation mail!</h2>
-            <p class="text-slate-400 max-w-sm">A brief of your entity and notification schedule has been sent via email & WhatsApp.</p>
+            <p class="text-slate-400 max-w-sm mb-6">A brief of your entity and notification schedule has been sent via email & WhatsApp.</p>
+            <button onclick="hideNotifOverlay()" class="px-8 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-all border border-white/10 uppercase text-[10px] tracking-widest">Close Dashboard</button>
+        </div>
+
+        <!-- Post-Limit Upgrade Prompt -->
+        <div id="post-limit-upgrade" class="hidden flex flex-col items-center max-w-md">
+            <div class="w-20 h-20 bg-purple-500/20 text-purple-400 rounded-2xl flex items-center justify-center text-4xl mb-6 border border-purple-500/30 upgrade-anim">
+                <i class="fas fa-crown"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-white mb-2 tracking-tight">Entity Successfully Deployed!</h2>
+            <p class="text-slate-400 mb-8">You have now used <b>2 of 2</b> free slots. Upgrade to Pro now to unlock unlimited entities and AI-driven cost optimization.</p>
+            
+            <div class="flex flex-col w-full gap-3">
+                <button onclick="upgradeAccount()" class="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02]">
+                    UPGRADE TO PRO NOW
+                </button>
+                <button onclick="hideNotifOverlay()" class="text-slate-500 text-sm hover:text-white transition-colors py-2 uppercase font-bold tracking-widest text-[10px]">
+                    Not now, view my grid
+                </button>
+            </div>
         </div>
     </div>
 
-    <!-- Subscription Paywall Modal -->
+    <!-- Subscription Paywall Modal (Direct Access Block) -->
     <div id="paywall-modal" class="fixed inset-0 z-[110] hidden flex items-center justify-center p-4 bg-slate-950/95 backdrop-blur-md">
         <div class="glass-card w-full max-w-md rounded-3xl p-8 border-purple-500/30 text-center premium-glow">
             <div class="w-20 h-20 bg-purple-500/20 text-purple-400 rounded-2xl flex items-center justify-center text-4xl mx-auto mb-6">
@@ -276,7 +304,6 @@
         }
 
         window.openModal = (cat) => {
-            // CHECK SUBSCRIPTION GATE
             if (nodes.length >= 2 && !isProUser) {
                 document.getElementById('paywall-modal').classList.remove('hidden');
                 return;
@@ -294,22 +321,22 @@
         window.closePaywall = () => document.getElementById('paywall-modal').classList.add('hidden');
 
         window.upgradeAccount = () => {
-            // Simulating payment process
-            document.getElementById('paywall-modal').innerHTML = `
+            document.getElementById('overlay').classList.remove('hidden');
+            document.getElementById('loader-box').classList.remove('hidden');
+            document.getElementById('post-limit-upgrade').classList.add('hidden');
+            document.getElementById('paywall-modal').classList.add('hidden');
+
+            document.getElementById('loader-box').innerHTML = `
                 <div class="flex flex-col items-center py-8">
                     <div class="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mb-4"></div>
-                    <h4 class="text-white font-bold">Upgrading to Pro...</h4>
+                    <h4 class="text-white font-bold">Authorizing License...</h4>
                 </div>
             `;
             
             setTimeout(() => {
                 isProUser = true;
                 localStorage.setItem('renew_ai_pro', 'true');
-                document.getElementById('subscription-badge').classList.remove('hidden');
-                closePaywall();
-                // Optionally re-open the modal they were trying to access
-                // Since we don't know which one they clicked, we just allow them to click again.
-                window.location.reload(); // Hard refresh to reset UI state
+                window.location.reload(); 
             }, 2000);
         };
 
@@ -330,7 +357,6 @@
             closeModal();
             showNotifOverlay();
             
-            // Simulating AI interaction with exponential backoff logic as per environment rules
             const aiFeedback = await getAISuggestion(data);
             data.aiSuggestion = aiFeedback;
 
@@ -339,14 +365,13 @@
             newlyAddedId = data.id;
 
             setTimeout(() => {
-                hideNotifOverlay();
                 renderNodes();
                 updateBurn();
-            }, 2000);
+            }, 1000);
         };
 
         async function getAISuggestion(node) {
-            const apiKey = ""; // Runtime key injection
+            const apiKey = "";
             const systemPrompt = "You are a cost optimization bot. Give one short, actionable tip (max 12 words) for the service mentioned.";
             const userQuery = `I just added a subscription for ${node.sub} costing ₹${node.amt}. It expires on ${node.expiry}.`;
             
@@ -492,13 +517,23 @@
             document.getElementById('overlay').classList.remove('hidden');
             document.getElementById('loader-box').classList.remove('hidden');
             document.getElementById('success-box').classList.add('hidden');
+            document.getElementById('post-limit-upgrade').classList.add('hidden');
+
             setTimeout(() => {
                 document.getElementById('loader-box').classList.add('hidden');
-                document.getElementById('success-box').classList.remove('hidden');
-            }, 1500);
+                
+                // NEW LOGIC: If user just created their 2nd entity (limit), show upgrade prompt
+                if (nodes.length === 2 && !isProUser) {
+                    document.getElementById('post-limit-upgrade').classList.remove('hidden');
+                } else {
+                    document.getElementById('success-box').classList.remove('hidden');
+                }
+            }, 1800);
         }
 
-        function hideNotifOverlay() { document.getElementById('overlay').classList.add('hidden'); }
+        window.hideNotifOverlay = () => { 
+            document.getElementById('overlay').classList.add('hidden'); 
+        }
 
         function initMesh() {
             const c = document.getElementById('mesh-canvas');
