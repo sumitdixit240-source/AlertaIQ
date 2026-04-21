@@ -1,19 +1,36 @@
 import express from "express";
-import Razorpay from "razorpay";
+
+let Razorpay;
+try {
+    Razorpay = (await import("razorpay")).default;
+} catch (err) {
+    console.error("❌ Razorpay not installed");
+}
+
 import crypto from "crypto";
 
 const router = express.Router();
 
 // ================= RAZORPAY INSTANCE =================
-const razorpay = new Razorpay({
-    key_id: process.env.RAZORPAY_KEY_ID,
-    key_secret: process.env.RAZORPAY_KEY_SECRET
-});
+let razorpay;
+
+if (Razorpay) {
+    razorpay = new Razorpay({
+        key_id: process.env.RAZORPAY_KEY_ID,
+        key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
+}
 
 // ================= CREATE ORDER =================
-// POST /api/payment/create-order
 router.post("/create-order", async (req, res) => {
     try {
+        if (!razorpay) {
+            return res.status(500).json({
+                success: false,
+                message: "Razorpay not configured on server"
+            });
+        }
+
         const { amount } = req.body;
 
         if (!amount) {
@@ -24,7 +41,7 @@ router.post("/create-order", async (req, res) => {
         }
 
         const options = {
-            amount: amount * 100, // Razorpay works in paise
+            amount: amount * 100,
             currency: "INR",
             receipt: `receipt_${Date.now()}`,
             payment_capture: 1
@@ -32,23 +49,22 @@ router.post("/create-order", async (req, res) => {
 
         const order = await razorpay.orders.create(options);
 
-        return res.status(200).json({
+        res.json({
             success: true,
             order
         });
 
     } catch (error) {
         console.error("Create Order Error:", error.message);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
-            message: "Failed to create order"
+            message: "Payment order failed"
         });
     }
 });
 
 // ================= VERIFY PAYMENT =================
-// POST /api/payment/verify
-router.post("/verify", async (req, res) => {
+router.post("/verify", (req, res) => {
     try {
         const {
             razorpay_order_id,
@@ -60,36 +76,27 @@ router.post("/verify", async (req, res) => {
 
         const expectedSignature = crypto
             .createHmac("sha256", process.env.RAZORPAY_KEY_SECRET)
-            .update(body.toString())
+            .update(body)
             .digest("hex");
 
         if (expectedSignature === razorpay_signature) {
-            return res.status(200).json({
+            return res.json({
                 success: true,
-                message: "Payment verified successfully"
+                message: "Payment verified"
             });
         } else {
             return res.status(400).json({
                 success: false,
-                message: "Invalid signature, payment failed"
+                message: "Invalid signature"
             });
         }
 
     } catch (error) {
-        console.error("Verify Payment Error:", error.message);
-        return res.status(500).json({
+        res.status(500).json({
             success: false,
-            message: "Payment verification failed"
+            message: "Verification failed"
         });
     }
-});
-
-// ================= TEST ROUTE =================
-router.get("/", (req, res) => {
-    res.json({
-        success: true,
-        message: "Payment route working 🚀"
-    });
 });
 
 export default router;
