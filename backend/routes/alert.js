@@ -1,32 +1,41 @@
-const express = require("express");
-const Alert = require("../models/Alert");
-const sendMail = require("../services/mailer");
-const auth = require("../middleware/authMiddleware");
+import express from "express";
 
 const router = express.Router();
 
-
-// CREATE ALERT
-router.post("/create", auth, async (req, res) => {
-  const alert = await Alert.create({
-    userId: req.user.id,
-    ...req.body
-  });
-
-  await sendMail(
-    req.body.email,
-    "AlertAIQ Confirmation",
-    `Alert created: ${alert.subCategory}, Amount: ₹${alert.amount}`
-  );
-
-  res.json(alert);
+// ================= TEST ROUTE =================
+router.get("/", (req, res) => {
+    res.json({
+        success: true,
+        message: "Alert route working 🚀"
+    });
 });
 
+// ================= CREATE ALERT =================
+router.post("/create", async (req, res) => {
+    try {
+        const { title, message } = req.body;
 
-// GET USER ALERTS
-router.get("/", auth, async (req, res) => {
-  const alerts = await Alert.find({ userId: req.user.id });
-  res.json(alerts);
+        if (!title || !message) {
+            return res.status(400).json({
+                success: false,
+                message: "Title and message are required"
+            });
+        }
+
+        // TODO: Save to DB later
+        res.json({
+            success: true,
+            message: "Alert created successfully",
+            data: { title, message }
+        });
+
+    } catch (error) {
+        console.error("Alert Error:", error.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to create alert"
+        });
+    }
 });
 
-module.exports = router;
+export default router;
