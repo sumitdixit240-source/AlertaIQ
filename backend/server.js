@@ -7,6 +7,7 @@ const rateLimit = require("express-rate-limit");
 const connectDB = require("./config/db");
 
 const authRoutes = require("./routes/auth.js");
+const alertRoutes = require("./routes/alert.js"); // ✅ ADDED HERE
 
 dotenv.config();
 
@@ -25,24 +26,30 @@ app.use(rateLimit({
   max: 100
 }));
 
-// body
+// body parser
 app.use(express.json());
 
-// routes
-app.use("/api/auth", authRoutes);
 
-// test route
+// ================= ROUTES =================
+app.use("/api/auth", authRoutes);
+app.use("/api", alertRoutes); // ✅ ADDED HERE (alerts + OTP)
+
+
+// ================= TEST ROUTE =================
 app.get("/", (req, res) => {
   res.send("Server Running ✅");
 });
 
 const PORT = process.env.PORT || 5000;
 
-// start
-connectDB().then(() => {
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log("Server running on port", PORT);
+
+// ================= START SERVER =================
+connectDB()
+  .then(() => {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log("Server running on port", PORT);
+    });
+  })
+  .catch(err => {
+    console.log("DB error:", err.message);
   });
-}).catch(err => {
-  console.log("DB error:", err.message);
-});
