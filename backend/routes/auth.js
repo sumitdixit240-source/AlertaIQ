@@ -1,22 +1,24 @@
-const express = require("express");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+import express from "express";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
-const User = require("../models/User");
-const OTP = require("../models/OTP");
-const sendMail = require("../services/mailer");
-const generateOTP = require("../utils/generateOTP");
+import User from "../models/User.js";
+import OTP from "../models/OTP.js";
+import sendMail from "../services/mailer.js";
+import generateOTP from "../utils/generateOTP.js";
 
 const router = express.Router();
 
 
-// ===================== REGISTER =====================
+// ================= REGISTER =================
 router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
     const existing = await User.findOne({ email });
-    if (existing) return res.status(400).json({ msg: "User already exists" });
+    if (existing) {
+      return res.status(400).json({ msg: "User already exists" });
+    }
 
     const hashed = await bcrypt.hash(password, 10);
 
@@ -33,19 +35,22 @@ router.post("/register", async (req, res) => {
     );
 
     res.json({ msg: "Account created", user });
+
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
 });
 
 
-// ===================== SEND OTP =====================
+// ================= SEND OTP =================
 router.post("/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ msg: "User not found" });
+    if (!user) {
+      return res.status(400).json({ msg: "User not found" });
+    }
 
     const otp = generateOTP();
 
@@ -54,26 +59,31 @@ router.post("/send-otp", async (req, res) => {
     await sendMail(
       email,
       "AlertAIQ OTP Verification",
-      `Your OTP is: ${otp}. It is valid for 5 minutes.`
+      `Your OTP is: ${otp}. Valid for 5 minutes.`
     );
 
     res.json({ msg: "OTP sent to email" });
+
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
 });
 
 
-// ===================== LOGIN (PASSWORD) =====================
+// ================= LOGIN (PASSWORD) =================
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ msg: "User not found" });
+    if (!user) {
+      return res.status(400).json({ msg: "User not found" });
+    }
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match) return res.status(400).json({ msg: "Wrong password" });
+    if (!match) {
+      return res.status(400).json({ msg: "Wrong password" });
+    }
 
     const token = jwt.sign(
       { id: user._id, email: user.email },
@@ -82,19 +92,23 @@ router.post("/login", async (req, res) => {
     );
 
     res.json({ token, user });
+
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
 });
 
 
-// ===================== VERIFY OTP LOGIN =====================
+// ================= VERIFY OTP LOGIN =================
 router.post("/verify-otp", async (req, res) => {
   try {
     const { email, otp } = req.body;
 
     const record = await OTP.findOne({ email, otp });
-    if (!record) return res.status(400).json({ msg: "Invalid OTP" });
+
+    if (!record) {
+      return res.status(400).json({ msg: "Invalid OTP" });
+    }
 
     const user = await User.findOne({ email });
 
@@ -111,9 +125,10 @@ router.post("/verify-otp", async (req, res) => {
     );
 
     res.json({ token, user });
+
   } catch (err) {
     res.status(500).json({ msg: err.message });
   }
 });
 
-module.exports = router;
+export default router;
