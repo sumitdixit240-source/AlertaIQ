@@ -29,7 +29,7 @@ const paymentRoute = require("./routes/payment");
 const alertRoute = require("./routes/alert");
 const mailerRoute = require("./services/mailer");
 const aiRoute = require("./routes/ai");
-const userRoute = require("./routes/user");
+const userRoute = require("./routes/User");
 const otpRoute = require("./routes/otp");
 
 // Razorpay OPTIONAL (only if file exists)
