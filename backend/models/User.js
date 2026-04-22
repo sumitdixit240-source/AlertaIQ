@@ -6,6 +6,8 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      minlength: 2,
+      maxlength: 50,
     },
 
     email: {
@@ -14,6 +16,7 @@ const userSchema = new mongoose.Schema(
       unique: true,
       lowercase: true,
       trim: true,
+      match: [/^\S+@\S+\.\S+$/, "Invalid email format"],
     },
 
     password: {
@@ -30,5 +33,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// IMPORTANT: export Mongoose MODEL (not schema)
+// prevent duplicate index issues
+userSchema.index({ email: 1 }, { unique: true });
+
 module.exports = mongoose.model("User", userSchema);
