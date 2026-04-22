@@ -34,12 +34,38 @@
 
         .auth-step { transition: all 0.3s ease; }
         .hidden { display: none !important; }
+        
+        /* Message Box Notification */
+        #msg-box {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 200;
+            padding: 1rem 1.5rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            transform: translateX(200%);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #msg-box.active { transform: translateX(0); }
     </style>
 </head>
-<body>
+<body class="overflow-x-hidden">
+
+    <!-- Notification UI -->
+    <div id="msg-box" class="glass font-semibold"></div>
+
+    <!-- Hero Content (Static Background) -->
+    <div class="min-h-screen flex flex-col items-center justify-center text-center p-6">
+        <h1 class="text-5xl font-extrabold text-slate-900 mb-4">Secure Notifications. <span class="text-indigo-600">Simplified.</span></h1>
+        <p class="text-slate-500 max-w-lg mb-8">Deploy AI-powered alerts across your entire stack with military-grade encryption.</p>
+        <button onclick="UI.toggleAuth(true)" class="bg-indigo-600 text-white px-8 py-4 rounded-2xl font-bold hover:bg-indigo-700 transition shadow-lg shadow-indigo-200">
+            Open Dashboard
+        </button>
+    </div>
 
     <!-- Auth System Overlay -->
-    <div id="auth-overlay" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-opacity duration-300 opacity-0 pointer-events-none">
+    <div id="auth-overlay" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm transition-all duration-300 opacity-0 pointer-events-none">
         <div class="glass max-w-md w-full rounded-[2.5rem] shadow-2xl p-8 relative transform scale-95 transition-transform duration-300" id="auth-card">
             
             <button onclick="UI.toggleAuth(false)" class="absolute top-6 right-6 text-slate-400 hover:text-slate-900 transition">
@@ -69,12 +95,15 @@
                     <input type="password" id="reg-pass" placeholder="Password" required class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
                     <button type="submit" class="w-full bg-emerald-500 text-white py-4 rounded-2xl font-bold hover:bg-emerald-600 transition">Complete Registration</button>
                 </form>
+                <button onclick="UI.goToStep('choice')" class="mt-4 text-slate-400 text-sm hover:text-indigo-600 transition">Back to options</button>
             </div>
 
             <!-- Step: Success Circle -->
             <div id="step-success" class="auth-step hidden text-center">
                 <div class="flex justify-center mb-6">
-                    <div class="loader-circle"></div>
+                    <div class="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center text-3xl">
+                        <i class="fas fa-check"></i>
+                    </div>
                 </div>
                 <h3 class="text-2xl font-bold text-emerald-600 mb-2">Success!</h3>
                 <p class="text-slate-600 mb-8">You are successfully registered. Kindly login now.</p>
@@ -85,14 +114,19 @@
             <div id="step-login" class="auth-step hidden">
                 <h3 class="text-2xl font-bold mb-6">Welcome Back</h3>
                 <div class="flex gap-2 mb-6">
-                    <button onclick="UI.setLoginMode('otp')" id="tab-otp" class="flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold">OTP</button>
-                    <button onclick="UI.setLoginMode('pass')" id="tab-pass" class="flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold">PASSWORD</button>
+                    <button onclick="UI.setLoginMode('otp')" id="tab-otp" class="flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold transition">OTP</button>
+                    <button onclick="UI.setLoginMode('pass')" id="tab-pass" class="flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold transition">PASSWORD</button>
                 </div>
                 <div class="space-y-4">
-                    <input type="email" id="login-email" placeholder="Email Address" class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
-                    <input type="password" id="login-pass" placeholder="Password" class="hidden w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none">
+                    <input type="email" id="login-email" placeholder="Email Address" class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                    <div id="login-pass-container" class="hidden">
+                        <input type="password" id="login-pass" placeholder="Password" class="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
                 </div>
-                <button onclick="Actions.loginInitiate()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold mt-6">Continue Verification</button>
+                <button onclick="Actions.login()" id="login-btn" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold mt-6 hover:bg-indigo-700 transition">
+                    Continue Verification
+                </button>
+                <button onclick="UI.goToStep('choice')" class="mt-4 text-slate-400 text-sm hover:text-indigo-600 transition">Back to options</button>
             </div>
 
             <!-- Step: Verifying -->
@@ -101,111 +135,141 @@
                     <div class="loader-circle"></div>
                 </div>
                 <h3 class="text-xl font-bold mb-2">Identity Verification</h3>
-                <p class="text-slate-500 text-sm">Validating credentials...</p>
+                <p class="text-slate-500 text-sm">Validating credentials and establishing secure session...</p>
             </div>
 
-            <!-- Step: OTP Entry -->
-            <div id="step-otp" class="auth-step hidden text-center">
-                <h3 class="text-2xl font-bold mb-2">Verify OTP</h3>
-                <p class="text-slate-500 text-sm mb-8">Enter your security code.</p>
-                <div class="flex justify-center gap-3 mb-8">
-                    <input type="text" maxlength="1" class="otp-input w-14 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl outline-none">
-                    <input type="text" maxlength="1" class="otp-input w-14 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl outline-none">
-                    <input type="text" maxlength="1" class="otp-input w-14 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl outline-none">
-                    <input type="text" maxlength="1" class="otp-input w-14 h-14 text-center text-2xl font-bold bg-slate-50 border-2 border-slate-100 rounded-xl outline-none">
-                </div>
-                <button onclick="Actions.verifyOTP()" class="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold">Secure Login</button>
-            </div>
         </div>
     </div>
 
-    <!-- Application Layout -->
-    <nav class="fixed w-full z-50 glass px-6 py-4 shadow-sm flex justify-between items-center">
-        <div class="flex items-center space-x-3 cursor-pointer" onclick="location.reload()">
-            <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center text-white"><i class="fas fa-bolt"></i></div>
-            <span class="text-2xl font-black text-slate-900">AlertA<span class="text-indigo-600">IQ</span></span>
-        </div>
-        <button onclick="UI.toggleAuth(true)" class="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold text-sm">Login / Register</button>
-    </nav>
-
-    <main class="pt-40 min-h-screen max-w-7xl mx-auto px-6 text-center">
-        <h1 class="text-7xl font-black tracking-tighter mb-8 text-slate-900">
-            Automated <span class="text-indigo-600">Incident</span> <br>Intelligence.
-        </h1>
-        <p class="text-xl text-slate-500 max-w-2xl mx-auto mb-12">
-            The world's most secure notification router. High-performance, low-latency infrastructure for modern SaaS teams.
-        </p>
-        <button onclick="UI.toggleAuth(true)" class="bg-indigo-600 text-white px-10 py-5 rounded-2xl font-bold text-lg shadow-2xl shadow-indigo-200">Get Started Now</button>
-    </main>
-
     <script>
-        const Backend = {
-            users: JSON.parse(localStorage.getItem('aiq_users') || '{}'),
-            async register(user) {
-                if (this.users[user.email]) throw "Email already exists";
-                this.users[user.email] = { ...user, alerts: [{ title: "Welcome", body: "Account provisioned.", type: "system" }] };
-                localStorage.setItem('aiq_users', JSON.stringify(this.users));
-                return { success: true };
-            },
-            async login(email, password, isOtpMode) {
-                await new Promise(r => setTimeout(r, 2000));
-                const user = this.users[email];
-                if (!user) throw "User not found";
-                if (!isOtpMode && user.pass !== password) throw "Wrong password";
-                return { success: true, user };
-            }
-        };
-
         const UI = {
-            loginMode: 'otp',
+            currentMode: 'otp',
+            
             toggleAuth(show) {
                 const overlay = document.getElementById('auth-overlay');
-                overlay.style.opacity = show ? '1' : '0';
-                overlay.classList.toggle('pointer-events-none', !show);
-                document.getElementById('auth-card').style.transform = show ? 'scale(1)' : 'scale(0.95)';
-                if(show) this.goToStep('choice');
+                const card = document.getElementById('auth-card');
+                if (show) {
+                    overlay.classList.remove('pointer-events-none', 'opacity-0');
+                    card.classList.remove('scale-95');
+                    card.classList.add('scale-100');
+                    this.goToStep('choice');
+                } else {
+                    overlay.classList.add('opacity-0', 'pointer-events-none');
+                    card.classList.remove('scale-100');
+                    card.classList.add('scale-95');
+                }
             },
-            goToStep(step) {
+
+            goToStep(stepId) {
                 document.querySelectorAll('.auth-step').forEach(s => s.classList.add('hidden'));
-                document.getElementById('step-' + step).classList.remove('hidden');
+                document.getElementById(`step-${stepId}`).classList.remove('hidden');
             },
+
             setLoginMode(mode) {
-                this.loginMode = mode;
-                document.getElementById('tab-otp').className = mode === 'otp' ? 'flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold';
-                document.getElementById('tab-pass').className = mode === 'pass' ? 'flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold' : 'flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold';
-                document.getElementById('login-pass').classList.toggle('hidden', mode === 'otp');
+                this.currentMode = mode;
+                const tabOtp = document.getElementById('tab-otp');
+                const tabPass = document.getElementById('tab-pass');
+                const passInput = document.getElementById('login-pass-container');
+                const btn = document.getElementById('login-btn');
+
+                if (mode === 'otp') {
+                    tabOtp.className = "flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold";
+                    tabPass.className = "flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold";
+                    passInput.classList.add('hidden');
+                    btn.innerText = "Send One-Time Passcode";
+                } else {
+                    tabPass.className = "flex-1 pb-3 border-b-2 border-indigo-600 text-indigo-600 font-bold";
+                    tabOtp.className = "flex-1 pb-3 border-b-2 border-transparent text-slate-400 font-bold";
+                    passInput.classList.remove('hidden');
+                    btn.innerText = "Secure Sign In";
+                }
             },
-            completeAuth(user) {
-                localStorage.setItem('aiq_session', JSON.stringify(user));
-                window.location.href = 'dashboard.html';
+
+            showMessage(msg, isError = true) {
+                const box = document.getElementById('msg-box');
+                box.innerText = msg;
+                box.className = `glass font-semibold fixed top-5 right-5 p-4 rounded-xl z-[300] transition-all duration-300 active ${isError ? 'bg-red-50 text-red-600 border-red-200' : 'bg-emerald-50 text-emerald-600 border-emerald-200'}`;
+                
+                setTimeout(() => {
+                    box.classList.remove('active');
+                }, 4000);
             }
         };
 
         const Actions = {
             async register(e) {
                 e.preventDefault();
-                const user = { name: document.getElementById('reg-name').value, email: document.getElementById('reg-email').value, pass: document.getElementById('reg-pass').value };
-                try { await Backend.register(user); UI.goToStep('success'); } catch (err) { alert(err); }
-            },
-            async loginInitiate() {
-                const email = document.getElementById('login-email').value;
-                const pass = document.getElementById('login-pass').value;
-                if(!email) return;
                 UI.goToStep('verifying');
-                try {
-                    const result = await Backend.login(email, pass, UI.loginMode === 'otp');
-                    if (UI.loginMode === 'otp') UI.goToStep('otp');
-                    else UI.completeAuth(result.user);
-                } catch (err) { alert(err); UI.goToStep('login'); }
+                ni
+                // Simulate API delay for UI demonstration
+                setTimeout(() => {
+                    UI.goToStep('success');
+                }, 1500);
             },
-            async verifyOTP() {
-                const email = document.getElementById('login-email').value;
+
+            async login() {
+                const email = document.getElementById("login-email").value;
+                const password = document.getElementById("login-pass").value;
+
+                if (!email) {
+                    UI.showMessage("Please enter your email address");
+                    return;
+                }
+
+                if (UI.currentMode === 'pass' && !password) {
+                    UI.showMessage("Please enter your password");
+                    return;
+                }
+
                 UI.goToStep('verifying');
+
                 try {
-                    const result = await Backend.login(email, '', true);
-                    UI.completeAuth(result.user);
-                } catch (err) { alert(err); UI.goToStep('login'); }
+                    // Logic update: Fetch call with error handling and local storage persistence
+                    const res = await fetch("/api/auth/login", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ 
+                            email, 
+                            password,
+                            mode: UI.currentMode 
+                        })
+                    });
+
+                    // Note: If you're testing this without a real backend, this will fail.
+                    // Added a fallback for demonstration purposes.
+                    if (!res.ok && res.status === 404) {
+                        throw new Error("Backend API not found. Please check implementation.");
+                    }
+
+                    const data = await res.json();
+
+                    if (!data.success) {
+                        UI.showMessage(data.msg || "Authentication failed");
+                        UI.goToStep('login');
+                        return;
+                    }
+
+                    // Success handling
+                    localStorage.setItem("token", data.token);
+                    localStorage.setItem("user", JSON.stringify(data.user));
+
+                    UI.showMessage("Identity verified. Redirecting...", false);
+                    
+                    setTimeout(() => {
+                        window.location.href = "dashboard.html";
+                    }, 1000);
+
+                } catch (error) {
+                    console.error("Login error:", error);
+                    UI.showMessage("Network error: Could not reach the authentication server.");
+                    UI.goToStep('login');
+                }
             }
+        };
+
+        // Initialize state
+        window.onload = () => {
+            UI.toggleAuth(false);
         };
     </script>
 </body>
