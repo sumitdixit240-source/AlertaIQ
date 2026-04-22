@@ -18,8 +18,9 @@ router.post("/register", async (req, res) => {
     console.log("REGISTER HIT:", email);
 
     const existing = await User.findOne({ email });
-    if (existing)
+    if (existing) {
       return res.status(400).json({ msg: "User already exists" });
+    }
 
     const hashed = await bcrypt.hash(password, 10);
 
@@ -30,11 +31,15 @@ router.post("/register", async (req, res) => {
       isVerified: false
     });
 
-    await sendMail(
-      email,
-      "AlertAIQ Account Created",
-      `Hi ${name}, your account is created. Please verify OTP.`
-    );
+    try {
+      await sendMail(
+        email,
+        "AlertAIQ Account Created",
+        `Hi ${name}, your account is created. Please verify OTP.`
+      );
+    } catch (mailErr) {
+      console.error("MAIL ERROR (REGISTER):", mailErr.message);
+    }
 
     res.json({ msg: "Account created", user });
 
@@ -53,33 +58,43 @@ router.post("/send-otp", async (req, res) => {
     console.log("SEND OTP HIT:", email);
 
     const user = await User.findOne({ email });
-    if (!user)
+    if (!user) {
       return res.status(400).json({ msg: "User not found" });
+    }
 
     const otp = generateOTP();
+    const createdAt = new Date();
 
-    // overwrite old OTP
+    // remove old OTP
     await OTP.deleteMany({ email });
 
     await OTP.create({
       email,
       otp,
-      createdAt: Date.now()
+      createdAt
     });
 
     console.log("OTP GENERATED:", otp);
 
-    await sendMail(
-      email,
-      "AlertAIQ OTP Verification",
-      `Your OTP is: ${otp} (valid 5 min)`
-    );
+    try {
+      await sendMail(
+        email,
+        "AlertAIQ OTP Verification",
+        `Your OTP is: ${otp} (valid 5 min)`
+      );
+    } catch (mailErr) {
+      console.error("MAIL ERROR (OTP):", mailErr.message);
+      return res.status(500).json({ msg: "Failed to send OTP email" });
+    }
 
     res.json({ msg: "OTP sent successfully" });
 
   } catch (err) {
     console.error("SEND OTP ERROR:", err);
-    res.status(500).json({ msg: "OTP failed" });
+    res.status(500).json({
+      msg: "OTP failed",
+      error: err.message
+    });
   }
 });
 
@@ -97,9 +112,10 @@ router.post("/verify-otp", async (req, res) => {
       return res.status(400).json({ msg: "OTP not found or expired" });
     }
 
-    // expiry check (5 min)
-    const now = Date.now();
-    if (now - record.createdAt > 5 * 60 * 1000) {
+    const now = new Date().getTime();
+    const otpTime = new Date(record.createdAt).getTime();
+
+    if (now - otpTime > 5 * 60 * 1000) {
       await OTP.deleteMany({ email });
       return res.status(400).json({ msg: "OTP expired" });
     }
@@ -143,15 +159,18 @@ router.post("/login", async (req, res) => {
     console.log("LOGIN HIT:", email);
 
     const user = await User.findOne({ email });
-    if (!user)
+    if (!user) {
       return res.status(400).json({ msg: "User not found" });
+    }
 
-    if (!user.isVerified)
+    if (!user.isVerified) {
       return res.status(403).json({ msg: "Verify OTP first" });
+    }
 
     const match = await bcrypt.compare(password, user.password);
-    if (!match)
+    if (!match) {
       return res.status(400).json({ msg: "Wrong password" });
+    }
 
     const token = jwt.sign(
       { id: user._id, email: user.email },
