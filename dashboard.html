@@ -102,6 +102,21 @@
 <body class="antialiased">
     <canvas id="mesh-canvas"></canvas>
 
+    <!-- Logout Confirmation Modal -->
+    <div id="logout-confirm-modal" class="fixed inset-0 z-[120] hidden flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md">
+        <div class="glass-card w-full max-w-sm rounded-3xl p-8 border-white/10 text-center">
+            <div class="w-16 h-16 bg-rose-500/10 text-rose-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-6">
+                <i class="fas fa-power-off"></i>
+            </div>
+            <h3 class="text-xl font-bold text-white mb-2">Exit Command Center?</h3>
+            <p class="text-slate-400 text-sm mb-8">Are you sure you want to logout? All active syncs will continue in the background.</p>
+            <div class="flex gap-3">
+                <button onclick="closeLogoutModal()" class="flex-1 px-4 py-3 bg-white/5 hover:bg-white/10 text-white rounded-xl font-bold transition-all border border-white/10 text-[10px] tracking-widest uppercase">No, Stay</button>
+                <button onclick="confirmLogout()" class="flex-1 px-4 py-3 bg-rose-600 hover:bg-rose-500 text-white rounded-xl font-bold transition-all shadow-lg shadow-rose-600/20 text-[10px] tracking-widest uppercase">Yes, Exit</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Global Overlays -->
     <div id="overlay" class="fixed inset-0 z-[100] hidden bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
         <div id="loader-box" class="flex flex-col items-center">
@@ -357,6 +372,9 @@
             closeModal();
             showNotifOverlay();
             
+            // Sending Confirmation Email with details
+            sendConfirmationEmail(data);
+
             const aiFeedback = await getAISuggestion(data);
             data.aiSuggestion = aiFeedback;
 
@@ -369,6 +387,34 @@
                 updateBurn();
             }, 1000);
         };
+
+        async function sendConfirmationEmail(node) {
+            // Simulated Email Sending Logic
+            const apiKey = "";
+            const systemPrompt = "You are an automated email notification system for RenewAI. Create a professional, detailed confirmation email body for the user acknowledging their new entity creation.";
+            const userQuery = `User created a new monitoring entity with the following details: 
+            Category: ${node.cat}
+            Service: ${node.sub}
+            Amount: ₹${node.amt}
+            Alert Frequency: ${node.freq}
+            Expiry Scheduled For: ${node.expiry}
+            
+            Please confirm that these details have been synchronized with their notification hub.`;
+            
+            try {
+                await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        contents: [{ parts: [{ text: userQuery }] }],
+                        systemInstruction: { parts: [{ text: systemPrompt }] }
+                    })
+                });
+                console.log("Detailed Confirmation Email Sent for: " + node.sub);
+            } catch (e) {
+                console.error("Email dispatch simulation failed", e);
+            }
+        }
 
         async function getAISuggestion(node) {
             const apiKey = "";
@@ -495,13 +541,23 @@
             document.getElementById('burn-meter').innerText = `₹${total.toLocaleString()} Total Monthly Burn`;
         }
 
+        // --- Logout Flow ---
         window.triggerLogout = () => {
+            document.getElementById('logout-confirm-modal').classList.remove('hidden');
+        };
+
+        window.closeLogoutModal = () => {
+            document.getElementById('logout-confirm-modal').classList.add('hidden');
+        };
+
+        window.confirmLogout = () => {
+            closeLogoutModal();
             const l = document.createElement('div');
             l.className = 'logout-screen';
             l.innerHTML = `
                 <div class="mb-6 text-6xl animate-bounce">👋</div>
-                <h2 class="text-3xl font-black text-white">COME BACK SOON!</h2>
-                <p class="text-slate-400 mt-2">Closing secure session channels...</p>
+                <h2 class="text-3xl font-black text-white">SAYING GOODBYE...</h2>
+                <p class="text-slate-400 mt-2">Closing secure session channels in 3 seconds</p>
                 <div class="mt-8 w-48 h-1 bg-white/5 rounded-full overflow-hidden">
                     <div class="h-full bg-indigo-500 animate-[progress_3s_linear]"></div>
                 </div>
@@ -509,7 +565,7 @@
             `;
             document.body.appendChild(l);
             setTimeout(() => {
-                window.location.reload();
+                window.location.href = "logo.html";
             }, 3000);
         };
 
