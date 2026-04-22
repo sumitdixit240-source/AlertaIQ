@@ -79,8 +79,20 @@ router.post("/send-otp", async (req, res) => {
     try {
       await sendMail(
         email,
-        "AlertAIQ OTP Verification",
-        `Your OTP is: ${otp} (valid 5 min)`
+        "AlertAIQ Login OTP",
+        
+  `Your One-Time Password (OTP) is ${otp}, valid for 5 minutes.
+
+• Please keep this OTP strictly confidential and never share it with anyone under any circumstances.  
+• AlertAIQ will never request your OTP through email, phone calls, or any communication channel.  
+• Use this OTP only on the official AlertAIQ login page to ensure maximum account security.  
+• Do not enter your OTP on any suspicious or unverified websites claiming to represent AlertAIQ.  
+• If you did not request this OTP, kindly ignore this message and avoid any further action.  
+• Immediately report any suspicious activity or unauthorized requests to our official support team.  
+• Always ensure your device and network are secure before entering sensitive authentication information.
+
+Regards,  
+Team AlertAIQ`
       );
     } catch (mailErr) {
       console.error("MAIL ERROR (OTP):", mailErr.message);
