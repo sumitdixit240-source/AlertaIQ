@@ -4,7 +4,6 @@ const jwt = require("jsonwebtoken");
 
 const User = require("../models/User");
 const OTP = require("../models/OTP");
-
 const sendMail = require("../services/mailer");
 const generateOTP = require("../utils/generateOTP");
 
@@ -16,7 +15,8 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // ✅ HERE (User.findOne used correctly)
+    console.log("REGISTER HIT:", email);
+
     const existing = await User.findOne({ email });
     if (existing)
       return res.status(400).json({ msg: "User already exists" });
@@ -33,12 +33,13 @@ router.post("/register", async (req, res) => {
     await sendMail(
       email,
       "AlertAIQ Account Created",
-      `Welcome ${name}, your account has been created successfully. Please verify OTP.`
+      `Hi ${name}, your account is created. Please verify OTP.`
     );
 
     res.json({ msg: "Account created", user });
 
   } catch (err) {
+    console.error("REGISTER ERROR:", err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -49,32 +50,36 @@ router.post("/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
 
-    // ✅ HERE (User.findOne used correctly)
+    console.log("SEND OTP HIT:", email);
+
     const user = await User.findOne({ email });
     if (!user)
       return res.status(400).json({ msg: "User not found" });
 
     const otp = generateOTP();
 
+    // overwrite old OTP
     await OTP.deleteMany({ email });
 
     await OTP.create({
       email,
       otp,
-      createdAt: new Date()
+      createdAt: Date.now()
     });
+
+    console.log("OTP GENERATED:", otp);
 
     await sendMail(
       email,
       "AlertAIQ OTP Verification",
-      `Your OTP is: ${otp}. It is valid for 5 minutes.`
+      `Your OTP is: ${otp} (valid 5 min)`
     );
 
     res.json({ msg: "OTP sent successfully" });
 
   } catch (err) {
-    console.log("OTP ERROR:", err);
-    res.status(500).json({ msg: "Failed to send OTP" });
+    console.error("SEND OTP ERROR:", err);
+    res.status(500).json({ msg: "OTP failed" });
   }
 });
 
@@ -84,21 +89,47 @@ router.post("/verify-otp", async (req, res) => {
   try {
     const { email, otp } = req.body;
 
-    const record = await OTP.findOne({ email, otp });
+    console.log("VERIFY HIT:", email, otp);
 
-    if (!record)
-      return res.status(400).json({ msg: "Invalid or expired OTP" });
+    const record = await OTP.findOne({ email });
 
-    await User.updateOne(
-      { email },
-      { isVerified: true }
-    );
+    if (!record) {
+      return res.status(400).json({ msg: "OTP not found or expired" });
+    }
 
+    // expiry check (5 min)
+    const now = Date.now();
+    if (now - record.createdAt > 5 * 60 * 1000) {
+      await OTP.deleteMany({ email });
+      return res.status(400).json({ msg: "OTP expired" });
+    }
+
+    if (record.otp !== otp) {
+      return res.status(400).json({ msg: "Invalid OTP" });
+    }
+
+    await User.updateOne({ email }, { isVerified: true });
     await OTP.deleteMany({ email });
 
-    res.json({ msg: "OTP verified successfully" });
+    const user = await User.findOne({ email });
+
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.json({
+      msg: "OTP verified",
+      token,
+      user: {
+        name: user.name,
+        email: user.email
+      }
+    });
 
   } catch (err) {
+    console.error("VERIFY ERROR:", err);
     res.status(500).json({ msg: err.message });
   }
 });
@@ -109,14 +140,14 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // ✅ HERE (User.findOne used correctly)
+    console.log("LOGIN HIT:", email);
+
     const user = await User.findOne({ email });
     if (!user)
       return res.status(400).json({ msg: "User not found" });
 
-    if (!user.isVerified) {
+    if (!user.isVerified)
       return res.status(403).json({ msg: "Verify OTP first" });
-    }
 
     const match = await bcrypt.compare(password, user.password);
     if (!match)
@@ -128,9 +159,16 @@ router.post("/login", async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    res.json({ token, user });
+    res.json({
+      token,
+      user: {
+        name: user.name,
+        email: user.email
+      }
+    });
 
   } catch (err) {
+    console.error("LOGIN ERROR:", err);
     res.status(500).json({ msg: err.message });
   }
 });
