@@ -1,5 +1,4 @@
 const express = require("express");
-const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const User = require("../models/User");
@@ -22,24 +21,19 @@ router.post("/register", async (req, res) => {
       return res.status(400).json({ msg: "User already exists" });
     }
 
-    const hashed = await bcrypt.hash(password, 10);
-
+    // ✅ password is hashed by schema (NO bcrypt here)
     const user = await User.create({
       name,
       email,
-      password: hashed,
+      password,
       isVerified: false
     });
 
-    try {
-      await sendMail(
-        email,
-        "AlertAIQ Account Created",
-        `Hi ${name}, your account is created. Please verify OTP.`
-      );
-    } catch (mailErr) {
-      console.error("MAIL ERROR (REGISTER):", mailErr.message);
-    }
+    await sendMail(
+      email,
+      "AlertAIQ Account Created",
+      `Hi ${name}, your account is created. Please verify OTP.`
+    ).catch(err => console.error("MAIL ERROR:", err.message));
 
     res.json({ msg: "Account created", user });
 
@@ -58,55 +52,31 @@ router.post("/send-otp", async (req, res) => {
     console.log("SEND OTP HIT:", email);
 
     const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(400).json({ msg: "User not found" });
-    }
+    if (!user) return res.status(400).json({ msg: "User not found" });
 
     const otp = generateOTP();
-    const createdAt = new Date();
 
-    // remove old OTP
     await OTP.deleteMany({ email });
 
     await OTP.create({
       email,
       otp,
-      createdAt
+      createdAt: new Date()
     });
 
     console.log("OTP GENERATED:", otp);
 
-    try {
-      await sendMail(
-        email,
-        "AlertAIQ Login OTP",
-        
-  `Your One-Time Password (OTP) is ${otp}, valid for 5 minutes.
-
-• Please keep this OTP strictly confidential and never share it with anyone under any circumstances.  
-• AlertAIQ will never request your OTP through email, phone calls, or any communication channel.  
-• Use this OTP only on the official AlertAIQ login page to ensure maximum account security.  
-• Do not enter your OTP on any suspicious or unverified websites claiming to represent AlertAIQ.  
-• If you did not request this OTP, kindly ignore this message and avoid any further action.  
-• Immediately report any suspicious activity or unauthorized requests to our official support team.  
-• Always ensure your device and network are secure before entering sensitive authentication information.
-
-Regards,  
-Team AlertAIQ`
-      );
-    } catch (mailErr) {
-      console.error("MAIL ERROR (OTP):", mailErr.message);
-      return res.status(500).json({ msg: "Failed to send OTP email" });
-    }
+    await sendMail(
+      email,
+      "AlertAIQ Login OTP",
+      `Your OTP is ${otp}, valid for 5 minutes. Do not share it.`
+    ).catch(err => console.error("MAIL ERROR:", err.message));
 
     res.json({ msg: "OTP sent successfully" });
 
   } catch (err) {
     console.error("SEND OTP ERROR:", err);
-    res.status(500).json({
-      msg: "OTP failed",
-      error: err.message
-    });
+    res.status(500).json({ msg: err.message });
   }
 });
 
@@ -124,10 +94,9 @@ router.post("/verify-otp", async (req, res) => {
       return res.status(400).json({ msg: "OTP not found or expired" });
     }
 
-    const now = new Date().getTime();
-    const otpTime = new Date(record.createdAt).getTime();
+    const isExpired = Date.now() - record.createdAt.getTime() > 5 * 60 * 1000;
 
-    if (now - otpTime > 5 * 60 * 1000) {
+    if (isExpired) {
       await OTP.deleteMany({ email });
       return res.status(400).json({ msg: "OTP expired" });
     }
@@ -170,7 +139,9 @@ router.post("/login", async (req, res) => {
 
     console.log("LOGIN HIT:", email);
 
-    const user = await User.findOne({ email });
+    // 🔥 required because password is select:false in schema
+    const user = await User.findOne({ email }).select("+password");
+
     if (!user) {
       return res.status(400).json({ msg: "User not found" });
     }
@@ -179,10 +150,14 @@ router.post("/login", async (req, res) => {
       return res.status(403).json({ msg: "Verify OTP first" });
     }
 
-    const match = await bcrypt.compare(password, user.password);
-    if (!match) {
+    const isMatch = await user.comparePassword(password);
+
+    if (!isMatch) {
       return res.status(400).json({ msg: "Wrong password" });
     }
+
+    user.lastLogin = new Date();
+    await user.save();
 
     const token = jwt.sign(
       { id: user._id, email: user.email },
@@ -203,5 +178,19 @@ router.post("/login", async (req, res) => {
     res.status(500).json({ msg: err.message });
   }
 });
+
+
+// ================= GET CURRENT USER =================
+const auth = require("../middleware/authMiddleware");
+
+router.get("/me", auth, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ msg: err.message });
+  }
+});
+
 
 module.exports = router;
