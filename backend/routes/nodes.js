@@ -6,32 +6,38 @@ const User = require("../models/User");
 const auth = require("../middleware/auth");
 
 
-// ================= GET NODES =================
+// ================= GET ONLY USER NODES =================
 router.get("/", auth, async (req, res) => {
-  const nodes = await Node.find({ userId: req.user.id })
-    .sort({ createdAt: -1 });
+  try {
+    const nodes = await Node.find({ userId: req.user.id })
+      .sort({ createdAt: -1 });
 
-  res.json(nodes);
+    res.json(nodes);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch nodes" });
+  }
 });
 
 
-// ================= CREATE NODE (LIMIT SAFE) =================
+// ================= CREATE NODE (SECURE + LIMIT SAFE) =================
 router.post("/", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
+
     const count = await Node.countDocuments({ userId: req.user.id });
 
-    // 🔒 PRO LIMIT ENFORCEMENT
+    // 🔒 Free plan restriction
     if (!user.isPro && count >= 2) {
       return res.status(403).json({
         error: "Free limit reached (2 nodes max)"
       });
     }
 
+    // 🔒 ONLY ALLOWED FIELDS
     const { cat, sub, freq, amt, expiry } = req.body;
 
     const node = await Node.create({
-      userId: req.user.id, // 🔒 ALWAYS SERVER CONTROLLED
+      userId: req.user.id, // ALWAYS SERVER CONTROLLED
       cat,
       sub,
       freq,
@@ -42,61 +48,102 @@ router.post("/", auth, async (req, res) => {
     res.json(node);
 
   } catch (err) {
-    res.status(500).json({ error: "Server error" });
+    res.status(500).json({ error: "Server error while creating node" });
   }
 });
 
 
-// ================= DELETE NODE =================
-router.delete("/:id", auth, async (req, res) => {
-  const node = await Node.findOne({
-    _id: req.params.id,
-    userId: req.user.id
-  });
-
-  if (!node) {
-    return res.status(404).json({ error: "Not found" });
-  }
-
-  await node.deleteOne();
-  res.json({ success: true });
-});
-
-
-// ================= UPDATE NODE =================
+// ================= UPDATE NODE (FULLY SECURED) =================
 router.put("/:id", auth, async (req, res) => {
-  const node = await Node.findOneAndUpdate(
-    {
-      _id: req.params.id,
-      userId: req.user.id // 🔒 ownership lock
-    },
-    req.body,
-    { new: true }
-  );
+  try {
+    // 🔒 ONLY ALLOWED FIELDS (NO req.body DIRECT USE)
+    const { cat, sub, freq, amt, expiry } = req.body;
 
-  if (!node) {
-    return res.status(404).json({ error: "Not found" });
+    const node = await Node.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        userId: req.user.id // ownership lock
+      },
+      {
+        cat,
+        sub,
+        freq,
+        amt,
+        expiry
+      },
+      { new: true }
+    );
+
+    if (!node) {
+      return res.status(404).json({ error: "Node not found" });
+    }
+
+    res.json(node);
+
+  } catch (err) {
+    res.status(500).json({ error: "Failed to update node" });
   }
-
-  res.json(node);
 });
 
 
-// ================= USER PROFILE =================
+// ================= DELETE NODE (OWNERSHIP VERIFIED) =================
+router.delete("/:id", auth, async (req, res) => {
+  try {
+    const node = await Node.findOne({
+      _id: req.params.id,
+      userId: req.user.id
+    });
+
+    if (!node) {
+      return res.status(404).json({ error: "Node not found" });
+    }
+
+    await node.deleteOne();
+
+    res.json({ success: true });
+
+  } catch (err) {
+    res.status(500).json({ error: "Failed to delete node" });
+  }
+});
+
+
+// ================= USER PROFILE (SAFE) =================
 router.get("/me", auth, async (req, res) => {
-  const user = await User.findById(req.user.id).select("-password");
-  res.json(user);
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    res.json(user);
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch user" });
+  }
 });
 
 
-// ================= UPGRADE USER =================
+// ================= UPGRADE USER (SECURED PLACEHOLDER) =================
 router.post("/upgrade", auth, async (req, res) => {
-  await User.findByIdAndUpdate(req.user.id, { isPro: true });
+  try {
+    const user = await User.findById(req.user.id);
 
-  res.json({
-    success: true,
-    message: "Upgraded to Pro"
-  });
+    // 🔒 PLACEHOLDER SECURITY LAYER (YOU MUST REPLACE THIS)
+    const { paymentVerified, isAdmin } = req.body;
+
+    if (!paymentVerified && !isAdmin) {
+      return res.status(403).json({
+        error: "Unauthorized upgrade attempt"
+      });
+    }
+
+    user.isPro = true;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Upgraded to Pro"
+    });
+
+  } catch (err) {
+    res.status(500).json({ error: "Upgrade failed" });
+  }
 });
 
 module.exports = router;
