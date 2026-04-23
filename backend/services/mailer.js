@@ -10,14 +10,21 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// Verify connection
+
+// ================= VERIFY MAILER =================
 transporter.verify()
   .then(() => console.log("✅ Mailer ready"))
-  .catch((err) => console.log("❌ Mailer error:", err));
+  .catch((err) => console.log("❌ Mailer error:", err.message));
 
-// Generic mail sender (used by auth.js)
+
+// ================= SAFE MAIL SENDER =================
 const sendMail = async (to, subject, html) => {
   try {
+    // validation (prevents silent bugs)
+    if (!to || !subject || !html) {
+      throw new Error("Missing email fields");
+    }
+
     const info = await transporter.sendMail({
       from: `"AlertAIQ" <${process.env.EMAIL_USER}>`,
       to,
@@ -26,11 +33,18 @@ const sendMail = async (to, subject, html) => {
     });
 
     console.log("📩 Email sent:", info.messageId);
-    return true;
+
+    // return full info (better debugging than true)
+    return {
+      success: true,
+      messageId: info.messageId
+    };
 
   } catch (err) {
     console.error("❌ Mail send failed:", err.message);
-    throw err; // important so auth.js can catch and handle it
+
+    // IMPORTANT: throw so auth.js can catch it
+    throw new Error(err.message);
   }
 };
 
