@@ -3,53 +3,70 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
+const mongoose = require("mongoose");
 
-const connectDB = require("./config/db");
+const connectDB = require("./config/db"); 
 
-const authRoutes = require("./routes/auth.js");
-const alertRoutes = require("./routes/alert.js"); // ✅ ADDED HERE
+const authRoutes = require("./routes/auth");
+const nodeRoutes = require("./routes/nodes"); 
+const alertRoutes = require("./routes/alert");
 
 dotenv.config();
 
 const app = express();
 
-// security
+
+// ================= SECURITY =================
 app.use(helmet());
 
 app.use(cors({
-  origin: "*"
+  origin: "*", // TODO: restrict in production
+  credentials: true
 }));
 
-// rate limit
 app.use(rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 100
+  max: 100,
+  message: "Too many requests, try again later"
 }));
 
-// body parser
+
+// ================= BODY =================
 app.use(express.json());
 
 
 // ================= ROUTES =================
 app.use("/api/auth", authRoutes);
-app.use("/api", alertRoutes); // ✅ ADDED HERE (alerts + OTP)
+app.use("/api/nodes", nodeRoutes);   
+app.use("/api", alertRoutes);
 
 
-// ================= TEST ROUTE =================
+// ================= HEALTH CHECK =================
 app.get("/", (req, res) => {
-  res.send("Server Running ✅");
+  res.json({ status: "Server Running ✅" });
 });
 
-const PORT = process.env.PORT || 5000;
 
+// ================= DB + SERVER =================
+const startServer = async () => {
+  try {
+    if (connectDB) {
+      await connectDB();
+    } else {
+      await mongoose.connect(process.env.MONGO_URI);
+      console.log("✅ MongoDB Connected (fallback)");
+    }
 
-// ================= START SERVER =================
-connectDB()
-  .then(() => {
+    const PORT = process.env.PORT || 5000;
+
     app.listen(PORT, "0.0.0.0", () => {
-      console.log("Server running on port", PORT);
+      console.log(`🚀 Server running on port ${PORT}`);
     });
-  })
-  .catch(err => {
-    console.log("DB error:", err.message);
-  });
+
+  } catch (err) {
+    console.error("❌ DB Error:", err.message);
+    process.exit(1);
+  }
+};
+
+startServer();
