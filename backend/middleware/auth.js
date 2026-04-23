@@ -15,22 +15,21 @@ module.exports = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // =========================
-    // SAFE NORMALIZATION LAYER
-    // =========================
-    req.user = {
-      id: decoded.id || decoded._id,   // 🔒 supports both versions
-      email: decoded.email || null
-    };
+    // 🔒 SAFE NORMALIZATION (supports old + new tokens)
+    const userId = decoded.id || decoded._id;
 
-    // optional debug-safe fallback (won't break anything)
-    if (!req.user.id) {
+    if (!userId) {
       return res.status(401).json({
         msg: "Invalid token payload"
       });
     }
 
-    next();
+    req.user = {
+      id: userId,
+      email: decoded.email || null
+    };
+
+    next(); // ✅ REQUIRED (prevents "next is not a function")
 
   } catch (err) {
     return res.status(401).json({
