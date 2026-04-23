@@ -3,7 +3,6 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
-const mongoose = require("mongoose");
 
 const connectDB = require("./config/db");
 
@@ -20,7 +19,7 @@ const app = express();
 app.use(helmet());
 
 
-// ================= CORS FIX (IMPORTANT) =================
+// ================= CORS =================
 const allowedOrigins = [
   "http://localhost:5000",
   "https://alertai-q.vercel.app"
@@ -28,7 +27,6 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
-    // allow tools like Postman
     if (!origin) return callback(null, true);
 
     if (allowedOrigins.includes(origin)) {
@@ -37,7 +35,7 @@ const corsOptions = {
 
     console.log("❌ Blocked CORS request from:", origin);
 
-    // TEMP: allow all during debugging (prevents failed fetch)
+    // TEMP DEV MODE (you can remove later)
     return callback(null, true);
   },
   credentials: true,
@@ -45,8 +43,12 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"]
 };
 
+// ✅ FIX: apply cors ONLY ONCE
 app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+
+
+// ❌ REMOVED (this was causing Render crash)
+// app.options("*", cors(corsOptions));
 
 
 // ================= RATE LIMIT =================
@@ -70,6 +72,12 @@ app.use("/api/alert", alertRoutes);
 // ================= HEALTH CHECK =================
 app.get("/", (req, res) => {
   res.json({ status: "Server Running ✅" });
+});
+
+
+// ================= 404 HANDLER (SAFE FIX) =================
+app.use((req, res) => {
+  res.status(404).json({ message: "Route not found" });
 });
 
 
