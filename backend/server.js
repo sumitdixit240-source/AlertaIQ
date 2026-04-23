@@ -20,29 +20,14 @@ const app = express();
 app.use(helmet());
 
 
-// ✅ SAFE CORS (MERGED FIX)
-const allowedOrigins = [
-  "http://localhost:5000",
-  "https://alertai-q.vercel.app/" //  change after deployment
-];
-
-const corsOptions = {
-  origin: function (origin, callback) {
-    // allow Postman / mobile apps (no origin)
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    return callback(null, false);
-  },
+// ================= CORS FIX (IMPORTANT) =================
+// TEMP: allow all origins (fixes "Failed to fetch")
+app.use(cors({
+  origin: true,
   credentials: true,
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
-};
-
-app.use(cors(corsOptions));
+}));
 
 
 // ================= RATE LIMIT =================
@@ -55,6 +40,13 @@ app.use(rateLimit({
 
 // ================= BODY =================
 app.use(express.json());
+
+
+// ================= DEBUG LOGGER =================
+app.use((req, res, next) => {
+  console.log("REQ:", req.method, req.url);
+  next();
+});
 
 
 // ================= ROUTES =================
@@ -72,21 +64,16 @@ app.get("/", (req, res) => {
 // ================= DB + SERVER =================
 const startServer = async () => {
   try {
-    if (connectDB) {
-      await connectDB();
-    } else {
-      await mongoose.connect(process.env.MONGO_URI);
-      console.log("✅ MongoDB Connected (fallback)");
-    }
+    await connectDB();
 
     const PORT = process.env.PORT || 5000;
 
-    app.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Server running on port ${PORT}`);
+    app.listen(PORT, () => {
+      console.log("🚀 Server running on port", PORT);
     });
 
   } catch (err) {
-    console.error("❌ DB Error:", err.message);
+    console.error("❌ Server Error:", err.message);
     process.exit(1);
   }
 };
