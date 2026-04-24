@@ -7,18 +7,17 @@ const sendMail = require("../services/mailer");
 const auth = require("../middleware/auth");
 
 
-// ================= TEST ROUTE =================
+// ================= HEALTH CHECK =================
 router.get("/", auth, (req, res) => {
   res.json({
     success: true,
-    message: "Alert route working 🚀",
+    message: "Alert system active 🚀",
     user: req.user.id
   });
 });
 
 
 // ================= CREATE ALERT =================
-// supports: /create AND /add
 router.post(["/create", "/add"], auth, async (req, res) => {
   try {
     const { title, message, description } = req.body;
@@ -31,7 +30,7 @@ router.post(["/create", "/add"], auth, async (req, res) => {
     }
 
     const alert = await Alert.create({
-      userId: req.user.id, // 🔐 IMPORTANT: USER ISOLATION
+      userId: req.user.id,
       title: title || "No Title",
       message: message || description || ""
     });
@@ -46,15 +45,14 @@ router.post(["/create", "/add"], auth, async (req, res) => {
     console.error("CREATE ALERT ERROR:", err.message);
     res.status(500).json({
       success: false,
-      error: err.message
+      error: "Failed to create alert"
     });
   }
 });
 
 
 // ================= GET USER ALERTS =================
-// supports: /my AND /all (multi-device sync)
-router.get(["/my", "/all"], auth, async (req, res) => {
+router.get(["/my", "/list"], auth, async (req, res) => {
   try {
     const alerts = await Alert.find({
       userId: req.user.id
@@ -69,50 +67,60 @@ router.get(["/my", "/all"], auth, async (req, res) => {
     console.error("GET ALERTS ERROR:", err.message);
     res.status(500).json({
       success: false,
-      error: err.message
+      error: "Failed to fetch alerts"
     });
   }
 });
 
 
-// ================= SEND OTP =================
+// ================= SEND OTP (SECURE VERSION) =================
 router.post("/send-otp", auth, async (req, res) => {
   try {
-    const email = req.user.email; // from JWT only (secure)
+    const email = req.user.email;
+
+    // 🔥 Prevent OTP spam (delete old first)
+    await OTP.deleteMany({ userId: req.user.id });
 
     const otp = Math.floor(100000 + Math.random() * 900000);
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
 
     await OTP.create({
       email,
       otp,
-      userId: req.user.id
+      userId: req.user.id,
+      createdAt: new Date(),
+      expiresAt
     });
 
-    await sendMail(email, "Your OTP", `<h1>Your OTP is ${otp}</h1>`);
+    await sendMail(
+      email,
+      "RenewAI OTP Verification",
+      `<h2>Your OTP is: ${otp}</h2><p>Valid for 5 minutes</p>`
+    );
 
     res.json({
       success: true,
-      message: "OTP sent"
+      message: "OTP sent successfully"
     });
 
   } catch (err) {
     console.error("SEND OTP ERROR:", err.message);
     res.status(500).json({
       success: false,
-      error: err.message
+      error: "Failed to send OTP"
     });
   }
 });
 
 
-// ================= VERIFY OTP =================
+// ================= VERIFY OTP (SECURE VERSION) =================
 router.post("/verify-otp", auth, async (req, res) => {
   try {
     const { otp } = req.body;
 
     const record = await OTP.findOne({
-      otp,
-      userId: req.user.id
+      userId: req.user.id,
+      otp: Number(otp)
     });
 
     if (!record) {
@@ -122,23 +130,29 @@ router.post("/verify-otp", auth, async (req, res) => {
       });
     }
 
-    await OTP.deleteMany({
-      userId: req.user.id
-    });
+    // ⛔ expiry check
+    if (record.expiresAt && Date.now() > record.expiresAt) {
+      await OTP.deleteMany({ userId: req.user.id });
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired"
+      });
+    }
+
+    await OTP.deleteMany({ userId: req.user.id });
 
     res.json({
       success: true,
-      message: "OTP verified"
+      message: "OTP verified successfully"
     });
 
   } catch (err) {
     console.error("VERIFY OTP ERROR:", err.message);
     res.status(500).json({
       success: false,
-      error: err.message
+      error: "OTP verification failed"
     });
   }
 });
-
 
 module.exports = router;

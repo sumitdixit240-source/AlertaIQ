@@ -15,26 +15,33 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    // ✅ CHECK EXISTING USER
+    if (!name || !email || !password) {
+      return res.status(400).json({ msg: "All fields are required" });
+    }
+
     const existing = await User.findOne({ email });
     if (existing) {
       return res.status(400).json({ msg: "User already exists" });
     }
 
-    // ✅ CREATE USER
     await User.create({
       name,
       email,
       password,
-      isVerified: false
+      isVerified: false,
+      isPro: false,
+      tokenVersion: 0
     });
 
-    // ✅ SEND OPTIONAL EMAIL
-    await sendMail(
-      email,
-      "AlertAIQ Account Created",
-      `Hi ${name}, your account is created. Please verify OTP.`
-    ).catch(() => {});
+    try {
+      await sendMail(
+        email,
+        "RenewAI Account Created",
+        `Hi ${name}, your account is created. Please verify OTP.`
+      );
+    } catch (mailErr) {
+      console.error("MAIL ERROR:", mailErr.message);
+    }
 
     res.json({ msg: "Account created successfully" });
 
@@ -50,6 +57,10 @@ router.post("/send-otp", async (req, res) => {
   try {
     const { email } = req.body;
 
+    if (!email) {
+      return res.status(400).json({ msg: "Email required" });
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(400).json({ msg: "User not found" });
@@ -57,22 +68,23 @@ router.post("/send-otp", async (req, res) => {
 
     const otp = generateOTP();
 
-    // ✅ DELETE OLD OTPs
     await OTP.deleteMany({ email });
 
-    // ✅ SAVE NEW OTP
     await OTP.create({
       email,
       otp,
       createdAt: new Date()
     });
 
-    // ✅ SEND EMAIL
-    await sendMail(
-      email,
-      "AlertAIQ OTP",
-      `Your OTP is ${otp}. Valid for 5 minutes.`
-    ).catch(() => {});
+    try {
+      await sendMail(
+        email,
+        "RenewAI OTP Verification",
+        `Your OTP is ${otp}. Valid for 5 minutes.`
+      );
+    } catch (mailErr) {
+      console.error("MAIL ERROR:", mailErr.message);
+    }
 
     res.json({ msg: "OTP sent successfully" });
 
@@ -88,45 +100,55 @@ router.post("/verify-otp", async (req, res) => {
   try {
     const { email, otp } = req.body;
 
+    if (!email || !otp) {
+      return res.status(400).json({ msg: "Email & OTP required" });
+    }
+
     const record = await OTP.findOne({ email });
     if (!record) {
       return res.status(400).json({ msg: "OTP not found" });
     }
 
-    // ✅ CHECK EXPIRY (5 min)
-    const expired =
+    const isExpired =
       Date.now() - record.createdAt.getTime() > 5 * 60 * 1000;
 
-    if (expired) {
+    if (isExpired) {
       await OTP.deleteMany({ email });
       return res.status(400).json({ msg: "OTP expired" });
     }
 
-    // ✅ VERIFY OTP
     if (record.otp !== otp) {
       return res.status(400).json({ msg: "Invalid OTP" });
     }
 
-    // ✅ MARK VERIFIED
-    await User.updateOne({ email }, { isVerified: true });
+    await User.updateOne(
+      { email },
+      { isVerified: true }
+    );
+
     await OTP.deleteMany({ email });
 
     const user = await User.findOne({ email });
 
-    // ✅ GENERATE TOKEN (CRITICAL FOR ISOLATION)
     const token = jwt.sign(
-      { id: user._id.toString() },
+      {
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role || "user",
+        tokenVersion: user.tokenVersion || 0
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
     res.json({
-      msg: "OTP verified",
+      msg: "OTP verified successfully",
       token,
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        isPro: user.isPro
       }
     });
 
@@ -142,29 +164,35 @@ router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    if (!email || !password) {
+      return res.status(400).json({ msg: "Email & password required" });
+    }
+
     const user = await User.findOne({ email }).select("+password");
+
     if (!user) {
       return res.status(400).json({ msg: "User not found" });
     }
 
-    // ✅ FORCE VERIFICATION
     if (!user.isVerified) {
       return res.status(403).json({ msg: "Verify OTP first" });
     }
 
-    // ✅ PASSWORD CHECK
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ msg: "Wrong password" });
     }
 
-    // ✅ TRACK LOGIN
     user.lastLogin = new Date();
     await user.save();
 
-    // ✅ TOKEN
     const token = jwt.sign(
-      { id: user._id.toString() },
+      {
+        id: user._id.toString(),
+        email: user.email,
+        role: user.role || "user",
+        tokenVersion: user.tokenVersion || 0
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -174,7 +202,8 @@ router.post("/login", async (req, res) => {
       user: {
         id: user._id,
         name: user.name,
-        email: user.email
+        email: user.email,
+        isPro: user.isPro
       }
     });
 
@@ -189,12 +218,17 @@ router.post("/login", async (req, res) => {
 router.get("/me", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
     res.json(user);
+
   } catch (err) {
     console.error("ME ERROR:", err.message);
     res.status(500).json({ msg: "Failed to fetch user" });
   }
 });
-
 
 module.exports = router;
