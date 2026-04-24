@@ -15,16 +15,19 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
+    // validation
     if (!name || !email || !password) {
       return res.status(400).json({ msg: "All fields are required" });
     }
 
+    // check existing user
     const existing = await User.findOne({ email });
     if (existing) {
       return res.status(400).json({ msg: "User already exists" });
     }
 
-    await User.create({
+    // create user
+    const user = new User({
       name,
       email,
       password,
@@ -33,6 +36,9 @@ router.post("/register", async (req, res) => {
       tokenVersion: 0
     });
 
+    await user.save();
+
+    // send welcome mail (non-blocking)
     try {
       await sendMail(
         email,
@@ -43,7 +49,7 @@ router.post("/register", async (req, res) => {
       console.error("MAIL ERROR:", mailErr.message);
     }
 
-    res.json({ msg: "Account created successfully" });
+    res.json({ msg: "User registered successfully" });
 
   } catch (err) {
     console.error("REGISTER ERROR:", err.message);
@@ -121,10 +127,7 @@ router.post("/verify-otp", async (req, res) => {
       return res.status(400).json({ msg: "Invalid OTP" });
     }
 
-    await User.updateOne(
-      { email },
-      { isVerified: true }
-    );
+    await User.updateOne({ email }, { isVerified: true });
 
     await OTP.deleteMany({ email });
 
