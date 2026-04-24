@@ -1,4 +1,5 @@
 const express = require("express");
+const cloudId = await pushNodeToCloud(newNode);
 const http = require("http");
 const socketIo = require("socket.io");
 const dotenv = require("dotenv");
