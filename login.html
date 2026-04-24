@@ -58,7 +58,7 @@
             z-index: 0;
             transform: translate(-50%, -50%);
             transition: opacity 0.3s;
-            display: none; /* Hidden on touch devices by default */
+            display: none;
         }
 
         @media (pointer: fine) {
@@ -97,12 +97,10 @@
             align-items: center;
             justify-content: center;
             padding: 1rem;
-            min-height: 56px; /* Better touch target */
+            min-height: 56px;
         }
 
-        .btn-startup:active {
-            transform: scale(0.98);
-        }
+        .btn-startup:active { transform: scale(0.98); }
 
         #overlay {
             position: fixed;
@@ -119,12 +117,8 @@
             padding: 1rem;
         }
 
-        #overlay.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
+        #overlay.active { opacity: 1; pointer-events: auto; }
 
-        /* Mobile specific scroll handling for modal */
         .modal-content {
             max-height: 90vh;
             overflow-y: auto;
@@ -198,46 +192,15 @@
             max-width: 400px;
         }
 
-        #msg-box.active {
-            transform: translate(-50%, 0);
-            opacity: 1;
-        }
+        #msg-box.active { transform: translate(-50%, 0); opacity: 1; }
 
         @media (min-width: 768px) {
-            #msg-box {
-                left: auto;
-                right: 1.5rem;
-                transform: translateY(-20px);
-                width: auto;
-            }
-            #msg-box.active {
-                transform: translateY(0);
-            }
+            #msg-box { left: auto; right: 1.5rem; transform: translateY(-20px); width: auto; }
+            #msg-box.active { transform: translateY(0); }
         }
 
         .font-mono-custom { font-family: 'JetBrains Mono', monospace; }
-
-        .feature-card {
-            border: 1px solid transparent;
-            transition: all 0.3s ease;
-        }
-        
-        .shimmer {
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
-            background-size: 200% 100%;
-            animation: shimmer 1.5s infinite;
-        }
-
-        @keyframes shimmer {
-            0% { background-position: -200% 0; }
-            100% { background-position: 200% 0; }
-        }
-
-        /* Fluid Typography */
-        .hero-title {
-            font-size: clamp(2.5rem, 8vw, 4rem);
-            line-height: 1.1;
-        }
+        .hero-title { font-size: clamp(2.5rem, 8vw, 4rem); line-height: 1.1; }
     </style>
 </head>
 
@@ -247,7 +210,6 @@
 <div class="grid-overlay"></div>
 <div id="glow" class="glow-cursor"></div>
 
-<!-- System Notification -->
 <div id="msg-box" class="glass-card px-5 py-4 flex items-center gap-4 border-l-4 border-indigo-500">
     <div class="w-8 h-8 bg-indigo-500/10 rounded-full flex items-center justify-center flex-shrink-0">
         <i class="fas fa-shield-check text-indigo-500 text-sm"></i>
@@ -258,7 +220,6 @@
     </div>
 </div>
 
-<!-- Header -->
 <header class="fixed top-0 w-full p-5 md:p-8 flex justify-between items-center z-50 bg-black/40 backdrop-blur-xl border-b border-white/5">
     <div class="flex items-center gap-3">
         <div class="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
@@ -277,7 +238,6 @@
 </header>
 
 <main class="relative z-10 pt-28 pb-12 px-5 md:px-12">
-    <!-- Hero Section -->
     <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-24 md:mb-32">
         <div class="space-y-6 md:space-y-8 text-center lg:text-left">
             <div class="flex justify-center lg:justify-start">
@@ -326,60 +286,12 @@
                     &gt; Alert: Electricity bill due in 2 days.<br>
                     &gt; Insight: Saved $45 this month on ChatGPT Plus.
                 </div>
-                <!-- Shimmer background -->
                 <div class="absolute inset-0 shimmer opacity-10 pointer-events-none"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Services Grid -->
-    <div id="services" class="max-w-7xl mx-auto space-y-12">
-        <div class="text-center space-y-4 px-4">
-            <h2 class="text-3xl md:text-4xl font-bold text-white tracking-tight">Services We Provide</h2>
-            <p class="text-slate-400 text-sm md:text-base max-w-2xl mx-auto">From personal coffee subscriptions to complex corporate payroll, we monitor every cycle.</p>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
-            <div class="glass-card p-6 md:p-8 feature-card">
-                <div class="w-11 h-11 bg-blue-500/10 rounded-xl flex items-center justify-center mb-6">
-                    <i class="fas fa-cloud text-blue-500"></i>
-                </div>
-                <h3 class="text-lg font-bold text-white mb-2">SaaS & Apps</h3>
-                <p class="text-sm text-slate-500 mb-5 leading-relaxed">Track Netflix, Spotify, ChatGPT, Figma, and GitHub. Eliminate forgotten trials and unused seats.</p>
-                <div class="flex flex-wrap gap-2">
-                    <span class="text-[9px] bg-white/5 px-2 py-1 rounded text-slate-400 font-bold uppercase tracking-wider">Entertainment</span>
-                    <span class="text-[9px] bg-white/5 px-2 py-1 rounded text-slate-400 font-bold uppercase tracking-wider">AI Tools</span>
-                </div>
-            </div>
-
-            <div class="glass-card p-6 md:p-8 feature-card">
-                <div class="w-11 h-11 bg-amber-500/10 rounded-xl flex items-center justify-center mb-6">
-                    <i class="fas fa-lightbulb text-amber-500"></i>
-                </div>
-                <h3 class="text-lg font-bold text-white mb-2">Bills & Utilities</h3>
-                <p class="text-sm text-slate-500 mb-5 leading-relaxed">Monitor Electricity, Water, Gas, and Fiber. Automated alerts to prevent service disruptions.</p>
-                <div class="flex flex-wrap gap-2">
-                    <span class="text-[9px] bg-white/5 px-2 py-1 rounded text-slate-400 font-bold uppercase tracking-wider">Essential</span>
-                    <span class="text-[9px] bg-white/5 px-2 py-1 rounded text-slate-400 font-bold uppercase tracking-wider">Home</span>
-                </div>
-            </div>
-
-            <div class="glass-card p-6 md:p-8 feature-card sm:col-span-2 lg:col-span-1">
-                <div class="w-11 h-11 bg-emerald-500/10 rounded-xl flex items-center justify-center mb-6">
-                    <i class="fas fa-file-invoice-dollar text-emerald-500"></i>
-                </div>
-                <h3 class="text-lg font-bold text-white mb-2">Tax Tracking</h3>
-                <p class="text-sm text-slate-500 mb-5 leading-relaxed">Manage Income Tax, GST, and Property taxes. Stay compliant with government deadlines.</p>
-                <div class="flex flex-wrap gap-2">
-                    <span class="text-[9px] bg-white/5 px-2 py-1 rounded text-slate-400 font-bold uppercase tracking-wider">Compliance</span>
-                    <span class="text-[9px] bg-white/5 px-2 py-1 rounded text-slate-400 font-bold uppercase tracking-wider">Government</span>
-                </div>
             </div>
         </div>
     </div>
 </main>
 
-<!-- Authentication Modal Overlay -->
 <div id="overlay">
     <div class="glass-card w-full max-w-[460px] relative overflow-hidden flex flex-col bg-[#050507] modal-content">
         
@@ -397,25 +309,6 @@
             </div>
             <h3 id="verify-title" class="text-xl md:text-2xl font-black text-white tracking-tight uppercase">Initiating Sequence</h3>
             <p id="verify-desc" class="text-indigo-400 font-mono-custom text-[10px] mt-3 uppercase tracking-[0.2em]">Securing your connection...</p>
-            <div class="mt-10 w-40 h-1 bg-white/5 rounded-full overflow-hidden border border-white/5">
-                <div class="h-full bg-indigo-500 shimmer w-full"></div>
-            </div>
-        </div>
-
-        <div id="welcomeBox" class="hidden p-8 md:p-12 flex flex-col items-center justify-center text-center">
-            <div class="mb-6 relative">
-                <div class="w-20 h-20 bg-gradient-to-tr from-indigo-600 to-purple-600 rounded-2xl flex items-center justify-center shadow-2xl shadow-indigo-500/40 rotate-12">
-                    <i class="fas fa-check-double text-white text-3xl -rotate-12"></i>
-                </div>
-            </div>
-            <h3 class="text-2xl font-extrabold text-white mb-2">Welcome Back</h3>
-            <p class="text-indigo-400 font-bold text-[10px] tracking-[0.2em] uppercase mb-6">Security Validated</p>
-            <div class="glass-card bg-white/5 p-5 mb-8 border-white/10">
-                <p id="quote-text" class="italic text-slate-300 text-xs leading-relaxed">"The goal isn't more money. The goal is living your life on your terms."</p>
-            </div>
-            <button onclick="UI.showLogin()" class="btn-startup w-full py-4 text-xs tracking-widest uppercase font-black">
-                Enter Dashboard
-            </button>
         </div>
 
         <div id="successBox" class="hidden absolute inset-0 bg-indigo-600 z-[120] flex flex-col items-center justify-center p-8 text-center">
@@ -506,49 +399,8 @@
 </div>
 
 <script>
-// Dynamic backend URL - works with both local and production
-const BACKEND_URL = window.location.hostname === 'localhost' 
-    ? "http://localhost:5000/api/auth"
-    : "https://alertaiq.onrender.com/api/auth";
-
-const quotes = [
-    "\"Beware of little expenses; a small leak will sink a great ship.\"",
-    "\"The goal isn't more money. The goal is living your life on your terms.\"",
-    "\"Do not save what is left after spending, but spend what is left after saving.\"",
-    "\"Finance is not merely about money. It's about life.\"",
-    "\"Control your money or its lack will control you.\""
-];
-
-// Touch-aware cursor glow
-document.addEventListener('mousemove', (e) => {
-    const glow = document.getElementById('glow');
-    if (glow && window.matchMedia('(pointer: fine)').matches) {
-        glow.style.left = e.pageX + 'px';
-        glow.style.top = e.pageY + 'px';
-    }
-});
-
-// Allow pressing Enter to submit forms
-document.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter') {
-        const activeModal = document.getElementById('overlay').classList.contains('active');
-        if (activeModal) {
-            const loginBox = document.getElementById('loginBox');
-            const registerBox = document.getElementById('registerBox');
-            
-            if (!loginBox.classList.contains('hidden')) {
-                Auth.handleLogin();
-            } else if (!registerBox.classList.contains('hidden')) {
-                Auth.register();
-            }
-        }
-    }
-});
-
-// Format OTP input (only numbers, max 6 digits)
-document.getElementById('otp-code')?.addEventListener('input', (e) => {
-    e.target.value = e.target.value.replace(/[^0-9]/g, '').slice(0, 6);
-});
+// ✅ FIXED BACKEND URL - Direct production link
+const BACKEND_URL = "https://alertaiq.onrender.com/api/auth";
 
 const UI = {
     mode: 'otp',
@@ -558,34 +410,24 @@ const UI = {
         document.getElementById("overlay").classList.add("active");
         document.body.style.overflow = "hidden";
         this.showLogin();
-        this.reset();
     },
 
     close() {
         document.getElementById("overlay").classList.remove("active");
         document.body.style.overflow = "auto";
-        setTimeout(() => this.reset(), 400);
+        this.reset();
     },
 
     reset() {
         this.step = 'idle';
-        
-        // Clear all form fields
         document.getElementById('email').value = '';
         document.getElementById('password').value = '';
         document.getElementById('otp-code').value = '';
-        document.getElementById('rname').value = '';
-        document.getElementById('remail').value = '';
-        document.getElementById('rpass').value = '';
-        
         document.getElementById('otp-group').classList.add('hidden');
         document.getElementById('main-btn').innerText = 'Unlock Dashboard';
         document.getElementById('verifyBox').classList.add('hidden');
         document.getElementById('successBox').classList.add('hidden');
-        document.getElementById('welcomeBox').classList.add('hidden');
         document.getElementById('modal-close').classList.remove('hidden');
-        document.getElementById("loginBox").classList.remove("hidden");
-        document.getElementById("registerBox").classList.add("hidden");
     },
 
     showLogin() {
@@ -597,12 +439,11 @@ const UI = {
     showRegister() {
         document.getElementById("registerBox").classList.remove("hidden");
         document.getElementById("loginBox").classList.add("hidden");
-        document.getElementById('welcomeBox').classList.add('hidden');
     },
 
     showVerification(title, desc) {
-        if(title) document.getElementById('verify-title').innerText = title;
-        if(desc) document.getElementById('verify-desc').innerText = desc;
+        document.getElementById('verify-title').innerText = title;
+        document.getElementById('verify-desc').innerText = desc;
         document.getElementById("verifyBox").classList.remove("hidden");
         document.getElementById("modal-close").classList.add("hidden");
     },
@@ -617,29 +458,18 @@ const UI = {
         document.getElementById("verifyBox").classList.add("hidden");
     },
 
-    showWelcome() {
-        const quote = quotes[Math.floor(Math.random() * quotes.length)];
-        document.getElementById('quote-text').innerText = quote;
-        document.getElementById('welcomeBox').classList.remove('hidden');
-        document.getElementById('verifyBox').classList.add('hidden');
-        document.getElementById('registerBox').classList.add('hidden');
-        document.getElementById('loginBox').classList.add('hidden');
-        document.getElementById("modal-close").classList.remove("hidden");
-    },
-
     setMode(m) {
         this.mode = m;
-        this.step = 'idle'; // Reset OTP step when switching modes
-
+        this.step = 'idle';
         const otpBtn = document.getElementById('mode-otp');
         const passBtn = document.getElementById('mode-pass');
-
+        
         if (m === 'otp') {
-            otpBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black shadow-lg";
+            otpBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black";
             passBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all text-slate-400";
             document.getElementById('main-btn').innerText = 'Send OTP';
         } else {
-            passBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black shadow-lg";
+            passBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black";
             otpBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all text-slate-400";
             document.getElementById('main-btn').innerText = 'Unlock Dashboard';
         }
@@ -650,8 +480,7 @@ const UI = {
 
     notify(msg) {
         const box = document.getElementById("msg-box");
-        const text = document.getElementById("msg-text");
-        text.innerText = msg;
+        document.getElementById("msg-text").innerText = msg;
         box.classList.add("active");
         setTimeout(() => box.classList.remove("active"), 4000);
     }
@@ -663,36 +492,20 @@ const Auth = {
         const password = document.getElementById("password").value.trim();
         const otp = document.getElementById("otp-code").value.trim();
 
-        // Validation
-        if (!email) {
-            UI.notify("⚠️ Enter email address");
-            return;
-        }
+        if (!email) return UI.notify("⚠️ Enter email address");
 
-        if (email && !email.includes("@")) {
-            UI.notify("⚠️ Invalid email format");
-            return;
-        }
-
-        UI.showVerification("Authentication", "Verifying credentials with secure node...");
+        UI.showVerification("Authentication", "Verifying credentials...");
 
         try {
             if (UI.mode === 'otp') {
-                // Step 1: Send OTP
                 if (UI.step === 'idle') {
-                    console.log("Sending OTP to:", email);
                     const res = await fetch(`${BACKEND_URL}/send-otp`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ email })
                     });
-
                     const data = await res.json();
-                    console.log("OTP Response:", res.status, data);
-                    
-                    if (!res.ok) {
-                        throw new Error(data.msg || "Failed to send OTP");
-                    }
+                    if (!res.ok) throw new Error(data.msg || "Failed to send OTP");
 
                     UI.step = 'otp_sent';
                     UI.hideVerification();
@@ -702,87 +515,35 @@ const Auth = {
                     return;
                 }
 
-                // Step 2: Verify OTP
-                if (!otp || otp.length !== 6) {
-                    UI.hideVerification();
-                    UI.notify("⚠️ Enter valid 6-digit OTP");
-                    return;
-                }
-
-                console.log("Verifying OTP for:", email);
                 const res = await fetch(`${BACKEND_URL}/verify-otp`, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ email, otp })
                 });
-
                 const data = await res.json();
-                console.log("Verify OTP Response:", res.status, data);
+                if (!res.ok) throw new Error(data.msg || "OTP invalid");
                 
-                if (!res.ok) {
-                    UI.hideVerification();
-                    throw new Error(data.msg || "OTP invalid");
-                }
-                
-                // Store token from OTP verification
-                if (data.token) {
-                    localStorage.setItem("token", data.token);
-                    UI.notify("✅ OTP verified successfully");
-                } else {
-                    throw new Error("No token received");
-                }
-                
+                localStorage.setItem("token", data.token);
                 UI.showSuccess();
-                setTimeout(() => { 
-                    window.location.href = "dashboard.html"; 
-                }, 1500);
+                setTimeout(() => window.location.href = "index.html", 1500);
                 return;
             }
 
-            // Password login
-            if (!password) {
-                UI.hideVerification();
-                UI.notify("⚠️ Enter password");
-                return;
-            }
-
-            console.log("Logging in with:", email);
             const res = await fetch(`${BACKEND_URL}/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password })
             });
-
             const data = await res.json();
-            console.log("Login Response:", res.status, data);
-            
-            if (!res.ok) {
-                UI.hideVerification();
-                throw new Error(data.msg || "Login failed");
-            }
+            if (!res.ok) throw new Error(data.msg || "Login failed");
 
-            if (data.token) {
-                localStorage.setItem("token", data.token);
-                UI.notify("✅ Login successful");
-                UI.showSuccess();
-                setTimeout(() => { 
-                    window.location.href = "dashboard.html"; 
-                }, 1500);
-            } else {
-                throw new Error("No token received from server");
-            }
+            localStorage.setItem("token", data.token);
+            UI.showSuccess();
+            setTimeout(() => window.location.href = "index.html", 1500);
 
         } catch (err) {
             UI.hideVerification();
-            console.error("Auth Error:", err);
-            
-            // Better error messages
-            let errorMsg = err.message;
-            if (err instanceof TypeError) {
-                errorMsg = "Cannot connect to server. Check backend is running.";
-            }
-            
-            UI.notify("❌ " + errorMsg);
+            UI.notify("❌ " + err.message);
         }
     },
 
@@ -791,85 +552,34 @@ const Auth = {
         const email = document.getElementById("remail").value.trim();
         const password = document.getElementById("rpass").value.trim();
 
-        // Validation
-        if (!name || !email || !password) {
-            UI.notify("⚠️ Fill in all required fields");
-            return;
-        }
+        if (!name || !email || !password) return UI.notify("⚠️ Fill all fields");
 
-        if (name.length < 2) {
-            UI.notify("⚠️ Name must be at least 2 characters");
-            return;
-        }
-
-        if (!email.includes("@")) {
-            UI.notify("⚠️ Invalid email format");
-            return;
-        }
-
-        if (password.length < 6) {
-            UI.notify("⚠️ Password must be at least 6 characters");
-            return;
-        }
-
-        UI.showVerification("Constructing Profile", "Setting up your financial shield...");
-        
-        const messages = ["Encrypting keys...", "Syncing grid...", "Finalizing dashboard..."];
-        let msgIdx = 0;
-        const interval = setInterval(() => {
-            if(msgIdx < messages.length) {
-                document.getElementById('verify-desc').innerText = messages[msgIdx++];
-            }
-        }, 800);
-
+        UI.showVerification("Constructing Profile", "Setting up security...");
         try {
-            console.log("Registering user:", email);
             const res = await fetch(`${BACKEND_URL}/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, email, password })
             });
-
             const data = await res.json();
-            console.log("Register Response:", res.status, data);
-            clearInterval(interval);
-            
-            if (!res.ok) {
-                throw new Error(data.msg || "Registration failed");
-            }
+            if (!res.ok) throw new Error(data.msg || "Registration failed");
 
-            UI.showWelcome();
-            UI.notify("✅ Registration Successful! Redirecting to login...");
-            
-            // Clear form fields
-            document.getElementById("rname").value = "";
-            document.getElementById("remail").value = "";
-            document.getElementById("rpass").value = "";
-
-            // Auto-redirect to login after 2 seconds
-            setTimeout(() => {
-                UI.showLogin();
-            }, 2000);
-
+            UI.notify("✅ Successful! Redirecting to login...");
+            setTimeout(() => UI.showLogin(), 2000);
         } catch (err) {
-            clearInterval(interval);
             UI.hideVerification();
-            console.error("Register Error:", err);
-            
-            // Better error messages
-            let errorMsg = err.message;
-            if (err instanceof TypeError) {
-                errorMsg = "Cannot connect to server. Check backend is running.";
-            }
-            
-            UI.notify("❌ " + errorMsg);
+            UI.notify("❌ " + err.message);
         }
     }
 };
 
-window.UI = UI;
-window.Auth = Auth;
+document.addEventListener('mousemove', (e) => {
+    const glow = document.getElementById('glow');
+    if (glow) {
+        glow.style.left = e.pageX + 'px';
+        glow.style.top = e.pageY + 'px';
+    }
+});
 </script>
-
 </body>
 </html>
