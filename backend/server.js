@@ -14,63 +14,42 @@ const alertRoutes = require("./routes/alert");
 
 dotenv.config();
 
-// ================= APP + SERVER =================
+// ================= APP =================
 const app = express();
 const server = http.createServer(app);
 
-// ================= ALLOWED ORIGINS =================
-const allowedOrigins = [
-  "http://localhost:3000",
-  "http://127.0.0.1:5500",
-  "https://alertai-q.vercel.app"
-];
-
-// ================= SOCKET.IO =================
+// ================= SOCKET =================
 const io = socketIo(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: true, // allow all (safe for dev + Vercel)
     methods: ["GET", "POST", "PUT", "DELETE"]
   }
 });
 
 app.set("io", io);
 
-// ================= SOCKET EVENTS =================
 io.on("connection", (socket) => {
-  console.log(`⚡ User connected: ${socket.id}`);
-
-  socket.on("nodeUpdated", (data) => {
-    io.emit("refreshNodes", data);
-  });
-
-  socket.on("newAlert", (data) => {
-    io.emit("refreshAlerts", data);
-  });
+  console.log("⚡ User connected:", socket.id);
 
   socket.on("disconnect", () => {
-    console.log(`❌ User disconnected: ${socket.id}`);
+    console.log("❌ User disconnected:", socket.id);
   });
 });
 
 // ================= SECURITY =================
 app.use(helmet());
 
-// ================= CORS =================
+// ================= CORS FIX =================
+// ⚠️ IMPORTANT: DO NOT use complex origin check unless needed
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      console.log("❌ Blocked CORS:", origin);
-      return callback(new Error("Not allowed by CORS"));
-    },
+    origin: true,
     credentials: true
   })
 );
+
+// ✅ FIX preflight (important for POST/PUT from Vercel)
+app.options("*", cors());
 
 // ================= RATE LIMIT =================
 app.use(
@@ -83,7 +62,7 @@ app.use(
 // ================= BODY PARSER =================
 app.use(express.json());
 
-// ================= REQUEST LOG =================
+// ================= LOG REQUESTS =================
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
@@ -99,20 +78,15 @@ app.get("/", (req, res) => {
   res.json({ status: "🚀 AlertAIQ Server Running" });
 });
 
-// ================= 404 HANDLER =================
-app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
-});
-
 // ================= ERROR HANDLER =================
 app.use((err, req, res, next) => {
-  console.error("❌ Server Error:", err.stack);
+  console.error("❌ Server Error:", err.message);
   res.status(500).json({
     message: err.message || "Internal Server Error"
   });
 });
 
-// ================= DATABASE + SERVER START =================
+// ================= START SERVER =================
 async function startServer() {
   try {
     await connectDB();
@@ -123,6 +97,7 @@ async function startServer() {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log("⚡ Socket.IO enabled");
     });
+
   } catch (err) {
     console.error("❌ DB ERROR:", err.message);
     process.exit(1);
