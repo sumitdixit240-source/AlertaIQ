@@ -8,40 +8,40 @@ const nodeSchema = new mongoose.Schema(
       ref: "User",
       required: true,
       index: true,
-      immutable: true // ✅ prevents changing ownership
+      immutable: true // prevents changing ownership
     },
 
     // ================= CORE FIELDS =================
-    cat: {
+    category: {
       type: String,
       required: true,
       trim: true
     },
 
-    sub: {
+    title: {
       type: String,
       required: true,
       trim: true
     },
 
-    freq: {
+    frequency: {
       type: String,
       enum: ["daily", "weekly", "monthly", "yearly", "one-time"],
       default: "monthly"
     },
 
-    amt: {
+    amount: {
       type: Number,
       required: true,
       min: 0
     },
 
-    expiry: {
+    expiryDate: {
       type: Date
     }
   },
   {
-    timestamps: true,   // ✅ auto adds createdAt & updatedAt
+    timestamps: true,   // auto adds createdAt & updatedAt
     versionKey: false
   }
 );
