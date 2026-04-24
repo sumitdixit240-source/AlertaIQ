@@ -2,71 +2,75 @@ const jwt = require("jsonwebtoken");
 
 module.exports = (req, res, next) => {
   try {
-    const authHeader = req.headers.authorization;
+    const authHeader =
+      req.headers.authorization || req.headers.Authorization;
 
     // ================= HEADER CHECK =================
     if (!authHeader || typeof authHeader !== "string") {
       return res.status(401).json({
-        msg: "Authorization header missing"
+        error: "Authorization header missing"
       });
     }
 
-    if (!authHeader.startsWith("Bearer ")) {
+    // ================= FORMAT CHECK =================
+    const parts = authHeader.split(" ");
+
+    if (parts.length !== 2 || parts[0] !== "Bearer") {
       return res.status(401).json({
-        msg: "Invalid authorization format"
+        error: "Invalid authorization format"
       });
     }
 
-    // ================= TOKEN EXTRACT =================
-    const token = authHeader.split(" ")[1];
+    const token = parts[1];
 
-    if (!token) {
+    if (!token || token.trim() === "") {
       return res.status(401).json({
-        msg: "Token not found"
+        error: "Token not found"
       });
     }
 
     // ================= VERIFY TOKEN =================
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // 🔥 CRITICAL: Must match your auth.js token payload
-    const userId = decoded.id;
-
-    if (!userId) {
+    if (!decoded || !decoded.id) {
       return res.status(401).json({
-        msg: "Invalid token payload"
+        error: "Invalid token payload"
       });
     }
 
     // ================= ATTACH USER =================
     req.user = {
-      id: userId
+      id: decoded.id,
+      email: decoded.email || null,
+      role: decoded.role || "user",
+      tokenVersion: decoded.tokenVersion || 0,
+      sessionId: decoded.sessionId || null
     };
 
-    req.token = token; // optional (logging/debugging)
+    req.token = token;
 
     next();
 
   } catch (err) {
 
-    // ================= EXPIRED TOKEN =================
+    // ================= TOKEN EXPIRED =================
     if (err.name === "TokenExpiredError") {
       return res.status(401).json({
-        msg: "Token expired, please login again"
+        error: "Token expired, please login again"
       });
     }
 
     // ================= INVALID TOKEN =================
     if (err.name === "JsonWebTokenError") {
       return res.status(401).json({
-        msg: "Invalid token"
+        error: "Invalid token"
       });
     }
 
     console.error("AUTH ERROR:", err.message);
 
     return res.status(500).json({
-      msg: "Authentication failed"
+      error: "Authentication failed"
     });
   }
 };
