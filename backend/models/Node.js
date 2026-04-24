@@ -2,11 +2,13 @@ const mongoose = require("mongoose");
 
 const nodeSchema = new mongoose.Schema(
   {
-    // 🔒 USER OWNERSHIP (SECURE ISOLATION)
+    // 🔒 USER OWNERSHIP (CRITICAL FOR ISOLATION)
     userId: {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
       required: true,
-      index: true // ⚡ faster queries per user
+      index: true,
+      immutable: true // ✅ prevents changing ownership
     },
 
     // ================= CORE FIELDS =================
@@ -24,7 +26,6 @@ const nodeSchema = new mongoose.Schema(
 
     freq: {
       type: String,
-      required: true,
       enum: ["daily", "weekly", "monthly", "yearly", "one-time"],
       default: "monthly"
     },
@@ -36,20 +37,12 @@ const nodeSchema = new mongoose.Schema(
     },
 
     expiry: {
-      type: Date,
-      required: false
-    },
-
-    // ================= AUTO TIMESTAMP =================
-    createdAt: {
-      type: Date,
-      default: Date.now,
-      index: true
+      type: Date
     }
   },
-
   {
-    versionKey: false // removes __v (clean production DB)
+    timestamps: true,   // ✅ auto adds createdAt & updatedAt
+    versionKey: false
   }
 );
 
