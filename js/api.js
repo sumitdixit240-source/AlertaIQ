@@ -1,4 +1,4 @@
-const BASE = "https://alertai-q.vercel.app/api"; // change after deploy
+const BASE = "http://localhost:5000/api"; // change after deploy
 
 export async function sendOTP(email) {
   return fetch(BASE + "/auth/send-otp", {
