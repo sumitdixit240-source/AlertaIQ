@@ -1,4 +1,6 @@
 const express = require("express");
+const http = require("http");
+const socketIo = require("socket.io");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -13,6 +15,37 @@ const alertRoutes = require("./routes/alert");
 dotenv.config();
 
 const app = express();
+
+
+// ================= HTTP SERVER =================
+const server = http.createServer(app);
+
+
+// ================= SOCKET.IO =================
+const io = socketIo(server, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE"]
+  }
+});
+
+io.on("connection", (socket) => {
+  console.log("⚡ User connected:", socket.id);
+
+  // 🔁 Node update broadcast
+  socket.on("nodeUpdated", (data) => {
+    io.emit("refreshNodes", data);
+  });
+
+  // 🔔 Alert broadcast (optional but useful)
+  socket.on("newAlert", (data) => {
+    io.emit("refreshAlerts", data);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("❌ User disconnected:", socket.id);
+  });
+});
 
 
 // ================= SECURITY =================
@@ -35,7 +68,7 @@ const corsOptions = {
 
     console.log("❌ Blocked CORS request from:", origin);
 
-    // TEMP DEV MODE (you can remove later)
+    // DEV MODE fallback
     return callback(null, true);
   },
   credentials: true,
@@ -43,12 +76,7 @@ const corsOptions = {
   allowedHeaders: ["Content-Type", "Authorization"]
 };
 
-// ✅ FIX: apply cors ONLY ONCE
 app.use(cors(corsOptions));
-
-
-// ❌ REMOVED (this was causing Render crash)
-// app.options("*", cors(corsOptions));
 
 
 // ================= RATE LIMIT =================
@@ -75,7 +103,7 @@ app.get("/", (req, res) => {
 });
 
 
-// ================= 404 HANDLER (SAFE FIX) =================
+// ================= 404 HANDLER =================
 app.use((req, res) => {
   res.status(404).json({ message: "Route not found" });
 });
@@ -88,8 +116,9 @@ const startServer = async () => {
 
     const PORT = process.env.PORT || 5000;
 
-    app.listen(PORT, "0.0.0.0", () => {
+    server.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`⚡ Socket.IO enabled`);
     });
 
   } catch (err) {
