@@ -19,7 +19,7 @@ dotenv.config();
 const app = express();
 const server = http.createServer(app);
 
-// ================= TRUST PROXY (IMPORTANT FOR RENDER/PROD) =================
+// ================= TRUST PROXY =================
 app.set("trust proxy", 1);
 
 // ================= SOCKET =================
@@ -32,11 +32,9 @@ const io = socketIo(server, {
 
 app.set("io", io);
 
-// ====== SOCKET SECURITY (BASIC USER ISOLATION) ======
 io.on("connection", (socket) => {
   console.log("⚡ Socket Connected:", socket.id);
 
-  // safer join (avoid fake userId abuse)
   socket.on("join", (userId) => {
     if (typeof userId === "string" && userId.length < 100) {
       socket.join(userId);
@@ -55,37 +53,27 @@ app.use(
   })
 );
 
-// ================= CORS =================
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  "http://localhost:3000",
-].filter(Boolean);
+// ================= BODY PARSER (REQUIRED FIX) =================
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// ================= CORS (UPDATED AS REQUESTED) =================
 app.use(
   cors({
-    origin: function (origin, callback) {
-      // allow mobile apps / postman / server-to-server
-      if (!origin) return callback(null, true);
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-
-      return callback(new Error("CORS blocked"));
-    },
+    origin: [
+      "http://127.0.0.1:5500",
+      "http://localhost:5500",
+      "https://your-frontend-domain.com",
+    ],
     credentials: true,
   })
 );
 
-// ================= BODY PARSER =================
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: true }));
-
 // ================= DATA SANITIZATION =================
-app.use(mongoSanitize()); // prevents NoSQL injection
-app.use(xss()); // prevents XSS attacks
+app.use(mongoSanitize());
+app.use(xss());
 
-// ================= RATE LIMIT =================
+// ================= GLOBAL RATE LIMIT =================
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -96,7 +84,16 @@ const limiter = rateLimit({
 
 app.use("/api", limiter);
 
-// ================= SIMPLE REQUEST LOG =================
+// ================= OTP / AUTH RATE LIMIT (ANTI-SPAM FIX) =================
+const authLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 10, // 10 requests per minute
+  message: "Too many OTP requests. Please wait a moment.",
+});
+
+app.use("/api/auth", authLimiter);
+
+// ================= REQUEST LOGGER =================
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   next();
@@ -139,7 +136,7 @@ async function startServer() {
     server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log("🔐 Security: ENABLED");
-      console.log("🌍 CORS:", allowedOrigins);
+      console.log("🌍 CORS ENABLED");
     });
   } catch (err) {
     console.error("❌ DB CONNECTION ERROR:", err.message);
