@@ -101,12 +101,7 @@
         }
 
         .btn-startup:active { transform: scale(0.98); }
-
-        .btn-startup:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
+        .btn-startup:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
 
         #overlay {
             position: fixed;
@@ -131,34 +126,6 @@
             scrollbar-width: none;
         }
         .modal-content::-webkit-scrollbar { display: none; }
-
-        .badge {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--primary);
-            padding: 6px 12px;
-            border-radius: 100px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            border: 1px solid rgba(99, 102, 241, 0.2);
-        }
-
-        #msg-box {
-            position: fixed;
-            top: 1rem;
-            left: 50%;
-            transform: translate(-50%, -100%);
-            z-index: 200;
-            opacity: 0;
-            pointer-events: none;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border-radius: 16px;
-            width: calc(100% - 2rem);
-            max-width: 400px;
-        }
-
-        #msg-box.active { transform: translate(-50%, 0); opacity: 1; }
 
         .scan-container {
             position: relative;
@@ -200,6 +167,39 @@
             100% { transform: translateY(clamp(90px, 18vw, 130px)); }
         }
 
+        .badge {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--primary);
+            padding: 6px 12px;
+            border-radius: 100px;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            border: 1px solid rgba(99, 102, 241, 0.2);
+        }
+
+        #msg-box {
+            position: fixed;
+            top: 1rem;
+            left: 50%;
+            transform: translate(-50%, -100%);
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            border-radius: 16px;
+            width: calc(100% - 2rem);
+            max-width: 400px;
+        }
+
+        #msg-box.active { transform: translate(-50%, 0); opacity: 1; }
+
+        @media (min-width: 768px) {
+            #msg-box { left: auto; right: 1.5rem; transform: translateY(-20px); width: auto; }
+            #msg-box.active { transform: translateY(0); }
+        }
+
         .font-mono-custom { font-family: 'JetBrains Mono', monospace; }
         .hero-title { font-size: clamp(2.5rem, 8vw, 4rem); line-height: 1.1; }
     </style>
@@ -211,7 +211,7 @@
 <div class="grid-overlay"></div>
 <div id="glow" class="glow-cursor"></div>
 
-<!-- Custom Message Box -->
+<!-- Custom Message Box for System Notifications -->
 <div id="msg-box" class="glass-card px-5 py-4 flex items-center gap-4 border-l-4 border-indigo-500">
     <div class="w-8 h-8 bg-indigo-500/10 rounded-full flex items-center justify-center flex-shrink-0">
         <i class="fas fa-shield-check text-indigo-500 text-sm"></i>
@@ -230,9 +230,10 @@
         <span class="text-lg font-extrabold tracking-tight">Alert<span class="text-indigo-500">AIQ</span></span>
     </div>
     <div class="hidden md:flex items-center gap-8 text-[13px] font-semibold">
+        <span id="user-welcome" class="text-indigo-300 font-mono-custom text-[11px] hidden"></span>
         <a href="#" class="text-white hover:opacity-80 transition">Services</a>
         <a href="#" class="text-slate-400 hover:text-white transition">Pricing</a>
-        <button onclick="UI.open()" class="text-indigo-400 hover:text-indigo-300 transition">Login</button>
+        <button id="auth-header-btn" onclick="UI.open()" class="text-indigo-400 hover:text-indigo-300 transition">Login</button>
     </div>
     <button onclick="UI.open()" class="md:hidden w-9 h-9 bg-white/5 rounded-lg flex items-center justify-center text-white">
         <i class="fas fa-user text-xs"></i>
@@ -300,7 +301,7 @@
             <i class="fas fa-times text-xs"></i>
         </button>
 
-        <!-- Verification/Scanning Overlay -->
+        <!-- Verification/Scanning State -->
         <div id="verifyBox" class="hidden absolute inset-0 bg-[#050507] z-[120] flex flex-col items-center justify-center p-8 text-center">
             <div class="scan-container">
                 <div class="scan-ring-bold"></div>
@@ -389,7 +390,7 @@
                 </div>
             </div>
 
-            <button onclick="Auth.register()" class="btn-startup w-full text-xs uppercase tracking-widest font-bold">
+            <button id="reg-btn" onclick="Auth.register()" class="btn-startup w-full text-xs uppercase tracking-widest font-bold">
                 Create My Account
             </button>
 
@@ -401,152 +402,62 @@
 </div>
 
 <script>
-// ✅ FIXED: Environment-aware Backend URL
-const BACKEND_URL = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
-    ? "http://localhost:5000"
-    : "https://alertaiq.onrender.com";
-
-// DOM Accessors
-const emailEl = document.getElementById("email");
-const passwordEl = document.getElementById("password");
-const otpEl = document.getElementById("otp-code");
-const otpGroup = document.getElementById("otp-group");
-const mainBtn = document.getElementById("main-btn");
-const rname = document.getElementById("rname");
-const remail = document.getElementById("remail");
-const rpass = document.getElementById("rpass");
-
-// Global State
+// ✅ BACKEND CONFIGURATION
+const BACKEND_URL = "https://alertaiq.onrender.com";
 let isLoading = false;
 
-async function safeJSON(res) {
+/**
+ * SAFE FETCH WRAPPER
+ * ✅ FIX: Automatically sends Bearer token for all requests (e.g. for /api/auth/me)
+ * ✅ FIX: Automatically handles 401 Unauthorized for protected routes.
+ */
+async function safeFetch(url, options = {}) {
+    const token = localStorage.getItem("token");
+    
+    // Prepare headers
+    const headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+        ...(options.headers || {})
+    };
+
+    // ✅ ADDED: Inject Authorization header if token exists
+    if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const config = { ...options, headers };
+
     try {
-        return await res.json();
-    } catch {
-        return {};
+        const res = await fetch(url, config);
+        
+        // ✅ ADDED: Global handler for expired or invalid tokens
+        if (res.status === 401 && !url.includes('/login') && !url.includes('/register') && !url.includes('/verify-otp')) {
+            Auth.logout();
+            throw new Error("Session expired. Please log in again.");
+        }
+
+        let data = {};
+        try {
+            const text = await res.text();
+            data = text ? JSON.parse(text) : {};
+        } catch (e) {
+            data = { message: "Invalid server response" };
+        }
+
+        if (!res.ok) {
+            throw new Error(data.message || data.msg || `Server Error (${res.status})`);
+        }
+
+        return data;
+    } catch (err) {
+        throw new Error(err.message || "Network link failure");
     }
 }
 
-const Auth = {
-    step: "idle", // idle → otp_sent
-
-    async request(url, body) {
-        try {
-            const res = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Accept": "application/json"
-                },
-                body: JSON.stringify(body)
-            });
-
-            const data = await safeJSON(res);
-
-            if (!res.ok) {
-                throw new Error(data.message || data.msg || "Request failed");
-            }
-
-            return data;
-        } catch (err) {
-            throw new Error(err.message || "Network connection error");
-        }
-    },
-
-    saveToken(token) {
-        if (!token) return;
-        sessionStorage.setItem("auth_token", token);
-    },
-
-    async handleLogin() {
-        if (isLoading) return;
-
-        const email = emailEl.value.trim();
-        const password = passwordEl.value.trim();
-        const otp = otpEl.value.trim();
-
-        if (!email) return UI.notify("Enter your email address");
-
-        isLoading = true;
-        UI.showVerification("Processing", "Please wait...");
-
-        try {
-            // ===== OTP FLOW =====
-            if (UI.mode === "otp") {
-                if (Auth.step === "idle") {
-                    await Auth.request(`${BACKEND_URL}/api/auth/send-otp`, { email });
-                    Auth.step = "otp_sent";
-                    UI.hideVerification();
-                    UI.notify("Security code sent to your email");
-                    otpGroup.classList.remove("hidden");
-                    mainBtn.innerText = "Verify Access Code";
-                    return;
-                }
-
-                if (!otp) throw new Error("Enter the verification code");
-
-                const data = await Auth.request(`${BACKEND_URL}/api/auth/verify-otp`, {
-                    email,
-                    otp
-                });
-                Auth.saveToken(data.token);
-                UI.showSuccess();
-                setTimeout(() => window.location.href = "index.html", 1200);
-                return;
-            }
-
-            // ===== PASSWORD FLOW =====
-            if (!password) throw new Error("Enter your password");
-
-            const data = await Auth.request(`${BACKEND_URL}/api/auth/login`, {
-                email,
-                password
-            });
-            Auth.saveToken(data.token);
-            UI.showSuccess();
-            setTimeout(() => window.location.href = "index.html", 1200);
-
-        } catch (err) {
-            UI.hideVerification();
-            UI.notify("❌ " + err.message);
-        } finally {
-            isLoading = false;
-        }
-    },
-
-    async register() {
-        if (isLoading) return;
-
-        const username = rname.value.trim();
-        const email = remail.value.trim();
-        const password = rpass.value.trim();
-
-        if (!username || !email || !password)
-            return UI.notify("All registration fields required");
-
-        isLoading = true;
-        UI.showVerification("Creating Account", "Deploying monitor...");
-
-        try {
-            await Auth.request(`${BACKEND_URL}/api/auth/register`, {
-                name: username,
-                email,
-                password
-            });
-            UI.hideVerification();
-            UI.notify("Account initialized successfully");
-            setTimeout(() => UI.showLogin(), 1500);
-        } catch (err) {
-            UI.hideVerification();
-            UI.notify("❌ " + err.message);
-        } finally {
-            isLoading = false;
-        }
-    }
-};
-
 const UI = {
     mode: 'otp',
+    step: 'idle',
 
     open() {
         document.getElementById("overlay").classList.add("active");
@@ -561,28 +472,23 @@ const UI = {
     },
 
     reset() {
-        Auth.step = 'idle';
+        this.step = 'idle';
+        isLoading = false;
         document.getElementById('email').value = '';
         document.getElementById('password').value = '';
         document.getElementById('otp-code').value = '';
-
-        // Reset visibility
         document.getElementById('otp-group').classList.add('hidden');
-        document.getElementById('pass-group').classList.toggle('hidden', this.mode !== 'pass');
-        document.getElementById('otp-group').classList.toggle('hidden', this.mode !== 'otp');
-
-        // Reset Button Text based on mode
-        mainBtn.innerText = this.mode === 'otp' ? 'Send Access Code' : 'Unlock Dashboard';
-
+        document.getElementById('main-btn').innerText = 'Unlock Dashboard';
+        document.getElementById('main-btn').disabled = false;
         document.getElementById('verifyBox').classList.add('hidden');
         document.getElementById('successBox').classList.add('hidden');
         document.getElementById('modal-close').classList.remove('hidden');
     },
 
     showLogin() {
+        this.reset();
         document.getElementById("loginBox").classList.remove("hidden");
         document.getElementById("registerBox").classList.add("hidden");
-        this.reset();
     },
 
     showRegister() {
@@ -609,19 +515,22 @@ const UI = {
 
     setMode(m) {
         this.mode = m;
-        
+        this.step = 'idle';
         const otpBtn = document.getElementById('mode-otp');
         const passBtn = document.getElementById('mode-pass');
         
         if (m === 'otp') {
             otpBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black";
             passBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all text-slate-400";
+            document.getElementById('main-btn').innerText = 'Send OTP';
         } else {
             passBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black";
             otpBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all text-slate-400";
+            document.getElementById('main-btn').innerText = 'Unlock Dashboard';
         }
 
-        this.reset();
+        document.getElementById('pass-group').classList.toggle('hidden', m !== 'pass');
+        document.getElementById('otp-group').classList.add('hidden');
     },
 
     notify(msg) {
@@ -629,10 +538,150 @@ const UI = {
         document.getElementById("msg-text").innerText = msg;
         box.classList.add("active");
         setTimeout(() => box.classList.remove("active"), 4000);
+    },
+
+    updateAuthUI(user) {
+        const welcome = document.getElementById("user-welcome");
+        const btn = document.getElementById("auth-header-btn");
+        if (user) {
+            welcome.innerText = `AGENT: ${user.name || user.email}`;
+            welcome.classList.remove("hidden");
+            btn.innerText = "Logout";
+            btn.onclick = () => Auth.logout();
+        } else {
+            welcome.classList.add("hidden");
+            btn.innerText = "Login";
+            btn.onclick = () => UI.open();
+        }
     }
 };
 
-// Background interaction
+const Auth = {
+    async handleLogin() {
+        if (isLoading) return;
+        
+        const email = document.getElementById("email").value.trim();
+        const password = document.getElementById("password").value.trim();
+        const otp = document.getElementById("otp-code").value.trim();
+
+        if (!email) return UI.notify("⚠️ Enter email address");
+
+        isLoading = true;
+        UI.showVerification("Authentication", "Verifying credentials...");
+
+        try {
+            if (UI.mode === 'otp') {
+                if (UI.step === 'idle') {
+                    await safeFetch(`${BACKEND_URL}/api/auth/send-otp`, {
+                        method: "POST",
+                        body: JSON.stringify({ email })
+                    });
+                    UI.step = 'otp_sent';
+                    UI.hideVerification();
+                    UI.notify("✅ OTP sent to email");
+                    document.getElementById('otp-group').classList.remove('hidden');
+                    document.getElementById('main-btn').innerText = "Verify OTP";
+                    return;
+                }
+
+                const data = await safeFetch(`${BACKEND_URL}/api/auth/verify-otp`, {
+                    method: "POST",
+                    body: JSON.stringify({ email, otp })
+                });
+
+                // ✅ FIX: Reset OTP Flow state after success
+                UI.step = 'idle';
+                document.getElementById('otp-group').classList.add('hidden');
+                document.getElementById('main-btn').innerText = 'Unlock Dashboard';
+
+                this.saveSession(data.token);
+                return;
+            }
+
+            const data = await safeFetch(`${BACKEND_URL}/api/auth/login`, {
+                method: "POST",
+                body: JSON.stringify({ email, password })
+            });
+            this.saveSession(data.token);
+
+        } catch (err) {
+            UI.hideVerification();
+            UI.notify("❌ " + err.message);
+        } finally {
+            isLoading = false;
+        }
+    },
+
+    async register() {
+        if (isLoading) return;
+        const name = document.getElementById("rname").value.trim();
+        const email = document.getElementById("remail").value.trim();
+        const password = document.getElementById("rpass").value.trim();
+
+        if (!name || !email || !password) return UI.notify("⚠️ Fill all fields");
+
+        isLoading = true;
+        UI.showVerification("Constructing Profile", "Setting up security...");
+        
+        try {
+            await safeFetch(`${BACKEND_URL}/api/auth/register`, {
+                method: "POST",
+                body: JSON.stringify({ name, email, password })
+            });
+            UI.notify("✅ Account Created! Please Login.");
+            setTimeout(() => UI.showLogin(), 2000);
+        } catch (err) {
+            UI.hideVerification();
+            UI.notify("❌ " + err.message);
+        } finally {
+            isLoading = false;
+        }
+    },
+
+    saveSession(token) {
+        if (token) {
+            localStorage.setItem("token", token);
+            localStorage.setItem("token_time", Date.now());
+            UI.showSuccess();
+            setTimeout(() => location.reload(), 1500);
+        }
+    },
+
+    logout() {
+        localStorage.removeItem("token");
+        localStorage.removeItem("token_time");
+        location.reload();
+    },
+
+    /**
+     * ✅ PROTECTED ROUTE CALL
+     * Uses safeFetch which now correctly injects the Authorization header.
+     */
+    async syncProfile() {
+        if (!localStorage.getItem("token")) return;
+        try {
+            const user = await safeFetch(`${BACKEND_URL}/api/auth/me`);
+            UI.updateAuthUI(user);
+        } catch (e) {
+            console.error("Profile sync failed", e);
+        }
+    }
+};
+
+window.addEventListener("load", () => {
+    const token = localStorage.getItem("token");
+    const time = localStorage.getItem("token_time");
+
+    if (token && time) {
+        const expired = Date.now() - parseInt(time) > 7 * 24 * 60 * 60 * 1000;
+        if (expired) {
+            Auth.logout();
+        } else {
+            Auth.syncProfile();
+        }
+    }
+});
+
 document.addEventListener('mousemove', (e) => {
     const glow = document.getElementById('glow');
     if (glow) {
