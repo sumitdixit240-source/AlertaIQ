@@ -186,9 +186,10 @@
                     <div class="space-y-3">
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Cycle Frequency</label>
                         <select id="frequency" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
                             <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                            <option value="yearly">Yearly</option>
+                            <option value="one-time">One-time</option>
                         </select>
                     </div>
                     <div class="space-y-3">
@@ -208,18 +209,12 @@
     </div>
 
     <script type="module">
-        // ==========================================
-        // 1. API CONFIG (FIXED FOR BACKEND ROUTES)
-        // ==========================================
-        const BASE = "https://alertaiq.onrender.com/api/nodes"; // Mount point
+        const BASE = "https://alertaiq.onrender.com/api/nodes"; 
         
         function getToken() {
             return localStorage.getItem("token");
         }
 
-        // ==========================================
-        // 2. GLOBAL STATE & DICTIONARY
-        // ==========================================
         let activeNodes = [];
         let selectedCategory = null;
 
@@ -231,10 +226,6 @@
             { id: "util", name: "Utility", icon: "fa-bolt", services: ["Electric", "Water", "Gas", "WiFi", "Broadband", "Airtel", "Jio", "Rent", "Gym"] }
         ];
 
-        // ==========================================
-        // 3. CLOUD OPERATIONS (STRICT RESPONSE DATA HANDLING)
-        // ==========================================
-        
         async function syncNodes() {
             try {
                 const res = await fetch(`${BASE}`, {
@@ -245,7 +236,6 @@
                 const responseData = await res.json();
                 
                 if (res.ok) {
-                    // FIX: Backend returns { success: true, data: [...] }
                     activeNodes = responseData.data || [];
                     renderUI();
                 } else if (res.status === 401) {
@@ -275,7 +265,6 @@
                     await syncNodes(); 
                     return responseData.data;
                 } else {
-                    // Handle specific error messages from your backend
                     showError(responseData.error || "Failed to create node");
                     return null;
                 }
@@ -308,9 +297,6 @@
             }
         }
 
-        // ==========================================
-        // 4. UI RENDERING
-        // ==========================================
         function renderUI() {
             const list = document.getElementById('entity-list');
             list.innerHTML = '';
@@ -325,7 +311,6 @@
                 const card = document.createElement('div');
                 card.className = "glass p-8 rounded-[2.5rem] relative overflow-hidden group border border-white/5 hover:border-indigo-500/30 transition-all";
                 
-                // Flexible ID handling (MongoDB _id)
                 const nodeId = node._id || node.id;
 
                 card.innerHTML = `
@@ -379,9 +364,6 @@
             });
         }
 
-        // ==========================================
-        // 5. INTERACTION HANDLERS
-        // ==========================================
         window.openModal = (sector) => {
             selectedCategory = sector;
             document.getElementById('modal-sector-title').innerText = `Deploy ${sector.name}`;
@@ -400,7 +382,6 @@
 
         document.getElementById('entity-form').onsubmit = async (e) => {
             e.preventDefault();
-            // Sending keys that match your backend's primary verification
             const node = {
                 title: document.getElementById('title').value,
                 category: selectedCategory.name,
@@ -437,9 +418,6 @@
             overlay.classList.add('pointer-events-none');
         }
 
-        // ==========================================
-        // 6. INITIALIZATION
-        // ==========================================
         function init3D() {
             const canvas = document.getElementById('bg-canvas');
             const scene = new THREE.Scene();
