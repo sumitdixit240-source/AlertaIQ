@@ -82,29 +82,45 @@
             flex-shrink: 0;
         }
 
-        .ai-glow {
-            box-shadow: 0 0 20px rgba(168, 85, 247, 0.1);
-            border: 1px solid rgba(168, 85, 247, 0.2) !important;
+        .error-toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ef4444;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 300;
+            display: none;
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
         }
     </style>
 </head>
 <body class="antialiased">
 
     <canvas id="bg-canvas"></canvas>
+    <div id="error-toast" class="error-toast"></div>
 
+    <!-- Loading Overlay -->
     <div id="global-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[200] flex flex-col items-center justify-center transition-opacity duration-500 opacity-0 pointer-events-none">
         <div class="loader-ring mb-4"></div>
         <p id="overlay-text" class="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Syncing with Mainframe...</p>
     </div>
 
+    <!-- Header -->
     <header class="glass m-4 md:m-6 rounded-[2.5rem] p-5 flex justify-between items-center z-50">
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                <i class="fa-solid fa-layer-group text-xl text-white"></i>
+                <i class="fa-solid fa-microchip text-xl text-white"></i>
             </div>
             <div>
                 <h2 class="text-xl font-black tracking-tighter">Core.AI</h2>
-                <p id="user-display" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Vercel API Connected</p>
+                <p id="user-display" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Unified Node Control</p>
             </div>
         </div>
         <button onclick="triggerLogout()" class="px-5 py-3 rounded-xl bg-slate-900/50 border border-slate-700/50 text-slate-400 hover:text-red-400 transition-all text-[10px] font-black uppercase tracking-widest">
@@ -114,6 +130,7 @@
 
     <main class="main-viewport px-4 md:px-8 space-y-8">
         
+        <!-- Stats -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
             <div class="glass p-6 rounded-[2rem] border-l-4 border-l-indigo-500">
                 <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Clusters</p>
@@ -132,6 +149,7 @@
             </div>
         </div>
 
+        <!-- Deployment Sectors -->
         <section class="max-w-7xl mx-auto">
             <div class="flex items-center gap-4 mb-4">
                 <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Deploy Sector</h3>
@@ -140,6 +158,7 @@
             <div id="category-grid" class="horizontal-scroll"></div>
         </section>
 
+        <!-- Active Clusters -->
         <section class="max-w-7xl mx-auto space-y-6">
             <div class="flex items-center gap-4">
                 <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Operational Clusters</h3>
@@ -149,6 +168,7 @@
         </section>
     </main>
 
+    <!-- Modal Form -->
     <div id="modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-[150] hidden flex items-center justify-center p-4">
         <div class="glass w-full max-w-lg rounded-[3rem] overflow-hidden flex flex-col shadow-2xl">
             <div class="p-8 border-b border-white/5 bg-gradient-to-r from-indigo-600/10 to-transparent flex justify-between items-center">
@@ -162,19 +182,23 @@
                     <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Provider Title</label>
                     <select id="title" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none focus:border-indigo-500"></select>
                 </div>
-                <div class="space-y-3">
-                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Notification Email</label>
-                    <input type="email" id="email" required placeholder="admin@core.ai" class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
-                </div>
                 <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-3">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Cycle Frequency</label>
+                        <select id="frequency" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
                     <div class="space-y-3">
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount (₹)</label>
                         <input type="number" id="amount" required placeholder="0" class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-emerald-400 outline-none">
                     </div>
-                    <div class="space-y-3">
-                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Expiry Date</label>
-                        <input type="date" id="expiryDate" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
-                    </div>
+                </div>
+                <div class="space-y-3">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Renewal Date</label>
+                    <input type="date" id="expiryDate" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
                 </div>
                 <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-xl text-[11px] font-black uppercase tracking-[0.3em] text-white transition-all active:scale-95">
                     Deploy to Cloud
@@ -184,36 +208,59 @@
     </div>
 
     <script type="module">
-        // ======================
-        // API CONFIG
-        // ======================
-        const BASE = "https://alertai-q.vercel.app/api";
+        // ==========================================
+        // 1. API CONFIG (FIXED FOR BACKEND ROUTES)
+        // ==========================================
+        const BASE = "https://alertaiq.onrender.com/api/nodes"; // Mount point
         
         function getToken() {
             return localStorage.getItem("token");
         }
 
-        // ======================
-        // GLOBAL STATE
-        // ======================
+        // ==========================================
+        // 2. GLOBAL STATE & DICTIONARY
+        // ==========================================
         let activeNodes = [];
         let selectedCategory = null;
 
         const SECTORS = [
-            { id: "saas", name: "SaaS", icon: "fa-cloud", services: ["Adobe", "Slack", "Zoom", "Office 365", "Figma", "Canva"] },
-            { id: "dev", name: "Build", icon: "fa-code", services: ["Vercel", "GitHub", "AWS", "DigitalOcean", "Supabase", "MongoDB"] },
-            { id: "fin", name: "Finance", icon: "fa-wallet", services: ["Stripe", "PayPal", "Amex", "HDFC", "SBI", "Robinhood"] },
-            { id: "stream", name: "Media", icon: "fa-film", services: ["Netflix", "Spotify", "Apple TV", "Prime Video", "Hulu", "Disney+"] },
-            { id: "util", name: "Utility", icon: "fa-bolt", services: ["Electric", "Water", "Gas", "WiFi", "Broadband", "Cellular"] }
+            { id: "saas", name: "SaaS", icon: "fa-cloud", services: ["Adobe", "Slack", "Zoom", "Office 365", "Figma", "Canva", "Notion", "Dropbox", "ChatGPT Plus", "Midjourney"] },
+            { id: "dev", name: "Build", icon: "fa-code", services: ["Vercel", "GitHub", "AWS", "DigitalOcean", "Supabase", "MongoDB", "Postman", "Cloudflare", "Clerk"] },
+            { id: "fin", name: "Finance", icon: "fa-wallet", services: ["Stripe", "PayPal", "Amex", "HDFC", "SBI", "Robinhood", "Zerodha", "Groww", "ICICI Bank"] },
+            { id: "stream", name: "Media", icon: "fa-film", services: ["Netflix", "Spotify", "Apple TV", "Prime Video", "Hulu", "Disney+", "YouTube Premium", "Crunchyroll"] },
+            { id: "util", name: "Utility", icon: "fa-bolt", services: ["Electric", "Water", "Gas", "WiFi", "Broadband", "Airtel", "Jio", "Rent", "Gym"] }
         ];
 
-        // ======================
-        // CLOUD OPERATIONS
-        // ======================
+        // ==========================================
+        // 3. CLOUD OPERATIONS (STRICT RESPONSE DATA HANDLING)
+        // ==========================================
+        
+        async function syncNodes() {
+            try {
+                const res = await fetch(`${BASE}`, {
+                    method: "GET",
+                    headers: { "Authorization": `Bearer ${getToken()}` }
+                });
+                
+                const responseData = await res.json();
+                
+                if (res.ok) {
+                    // FIX: Backend returns { success: true, data: [...] }
+                    activeNodes = responseData.data || [];
+                    renderUI();
+                } else if (res.status === 401) {
+                    triggerLogout();
+                }
+            } catch (err) {
+                console.error("Fetch Nodes Error:", err);
+                showError("Connection failed");
+            }
+        }
+
         async function pushNodeToCloud(node) {
             showOverlay("Creating Cluster...");
             try {
-                const res = await fetch(`${BASE}/nodes/create`, {
+                const res = await fetch(`${BASE}`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -221,74 +268,65 @@
                     },
                     body: JSON.stringify(node)
                 });
-                const data = await res.json();
-                if (!res.ok) throw data;
-                await syncNodes(); // Refresh after create
-                return data._id || data.id;
+                
+                const responseData = await res.json();
+                
+                if (res.ok) {
+                    await syncNodes(); 
+                    return responseData.data;
+                } else {
+                    // Handle specific error messages from your backend
+                    showError(responseData.error || "Failed to create node");
+                    return null;
+                }
             } catch (err) {
-                console.error("Create error:", err);
+                showError("Network Error");
                 return null;
             } finally {
                 hideOverlay();
-            }
-        }
-
-        async function getNodesFromCloud() {
-            try {
-                const res = await fetch(`${BASE}/nodes/all`, {
-                    method: "GET",
-                    headers: {
-                        "Authorization": `Bearer ${getToken()}`
-                    }
-                });
-                if (!res.ok) return [];
-                return await res.json();
-            } catch (err) {
-                console.error(err);
-                return [];
             }
         }
 
         async function deleteNodeFromCloud(id) {
             showOverlay("Terminating Cluster...");
             try {
-                const res = await fetch(`${BASE}/nodes/delete/${id}`, {
+                const res = await fetch(`${BASE}/${id}`, {
                     method: "DELETE",
-                    headers: {
-                        "Authorization": `Bearer ${getToken()}`
-                    }
+                    headers: { "Authorization": `Bearer ${getToken()}` }
                 });
-                await syncNodes();
-                return await res.json();
+                
+                if (res.ok) {
+                    await syncNodes();
+                } else {
+                    const data = await res.json();
+                    showError(data.error || "Delete failed");
+                }
             } catch (err) {
-                console.error(err);
-                return null;
+                showError("Delete Error");
             } finally {
                 hideOverlay();
             }
         }
 
-        // ======================
-        // UI CORE
-        // ======================
-        async function syncNodes() {
-            activeNodes = await getNodesFromCloud();
-            renderUI();
-        }
-
+        // ==========================================
+        // 4. UI RENDERING
+        // ==========================================
         function renderUI() {
             const list = document.getElementById('entity-list');
             list.innerHTML = '';
             let total = 0;
+
+            if (activeNodes.length === 0) {
+                list.innerHTML = `<div class="col-span-full py-20 text-center opacity-30 font-black tracking-widest text-xs uppercase">No Nodes Detected In This Sector</div>`;
+            }
 
             activeNodes.forEach(node => {
                 total += Number(node.amount || 0);
                 const card = document.createElement('div');
                 card.className = "glass p-8 rounded-[2.5rem] relative overflow-hidden group border border-white/5 hover:border-indigo-500/30 transition-all";
                 
-                const isNotified = node.reminderSent ? 
-                    '<span class="text-[8px] font-black text-emerald-400 uppercase tracking-widest"><i class="fa-solid fa-check-double mr-1"></i> Notified</span>' : 
-                    '<span class="text-[8px] font-black text-amber-500 uppercase tracking-widest"><i class="fa-solid fa-clock mr-1"></i> Monitoring</span>';
+                // Flexible ID handling (MongoDB _id)
+                const nodeId = node._id || node.id;
 
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-6">
@@ -296,22 +334,24 @@
                             <p class="text-[8px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">${node.category || 'Node'}</p>
                             <h4 class="text-xl font-black text-white">${node.title}</h4>
                         </div>
-                        <button onclick="handleDelete('${node._id || node.id}')" class="w-10 h-10 rounded-xl bg-red-500/5 text-red-500/30 hover:bg-red-500 hover:text-white transition-all">
+                        <button onclick="handleDelete('${nodeId}')" class="w-10 h-10 rounded-xl bg-red-500/5 text-red-500/30 hover:bg-red-500 hover:text-white transition-all">
                             <i class="fa-solid fa-trash-can text-xs"></i>
                         </button>
                     </div>
                     <p class="text-3xl font-black flashing-green mb-6">₹${Number(node.amount || 0).toLocaleString()}</p>
                     <div class="space-y-3">
-                        <div class="flex items-center gap-3 p-4 bg-slate-900/50 rounded-2xl border border-white/5">
-                            <i class="fa-solid fa-envelope text-slate-500 text-[10px]"></i>
-                            <span class="text-[10px] font-bold text-slate-400 truncate">${node.email}</span>
+                        <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-white/5">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-repeat text-slate-500 text-[10px]"></i>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${node.frequency || 'Monthly'}</span>
+                            </div>
                         </div>
                         <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-white/5">
                             <div class="flex items-center gap-2">
                                 <i class="fa-solid fa-calendar-day text-indigo-500 text-[10px]"></i>
                                 <span class="text-[10px] font-mono font-bold text-slate-300">${new Date(node.expiryDate).toLocaleDateString()}</span>
                             </div>
-                            ${isNotified}
+                            <span class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Active Node</span>
                         </div>
                     </div>
                 `;
@@ -322,46 +362,6 @@
             document.getElementById('stat-capital').innerText = `₹${total.toLocaleString()}`;
         }
 
-        // ======================
-        // HANDLERS
-        // ======================
-        window.openModal = (sector) => {
-            selectedCategory = sector;
-            document.getElementById('modal-sector-title').innerText = `Deploy ${sector.name}`;
-            const sub = document.getElementById('title');
-            sub.innerHTML = sector.services.map(s => `<option value="${s}">${s}</option>`).join('');
-            document.getElementById('modal').classList.remove('hidden');
-        };
-
-        window.closeModal = () => document.getElementById('modal').classList.add('hidden');
-        
-        window.handleDelete = async (id) => {
-            await deleteNodeFromCloud(id);
-        };
-
-        document.getElementById('entity-form').onsubmit = async (e) => {
-            e.preventDefault();
-            const node = {
-                title: document.getElementById('title').value,
-                email: document.getElementById('email').value,
-                amount: document.getElementById('amount').value,
-                expiryDate: document.getElementById('expiryDate').value,
-                category: selectedCategory.name,
-                reminderSent: false,
-                lastSent: null
-            };
-            const result = await pushNodeToCloud(node);
-            if (result) closeModal();
-        };
-
-        window.triggerLogout = () => {
-            localStorage.removeItem("token");
-            window.location.href = "index.html"; // Assuming a login page
-        };
-
-        // ======================
-        // SYSTEM UI
-        // ======================
         function renderCategories() {
             const grid = document.getElementById('category-grid');
             grid.innerHTML = '';
@@ -379,6 +379,51 @@
             });
         }
 
+        // ==========================================
+        // 5. INTERACTION HANDLERS
+        // ==========================================
+        window.openModal = (sector) => {
+            selectedCategory = sector;
+            document.getElementById('modal-sector-title').innerText = `Deploy ${sector.name}`;
+            const sub = document.getElementById('title');
+            sub.innerHTML = sector.services.map(s => `<option value="${s}">${s}</option>`).join('');
+            document.getElementById('modal').classList.remove('hidden');
+        };
+
+        window.closeModal = () => document.getElementById('modal').classList.add('hidden');
+        
+        window.handleDelete = async (id) => {
+            if (confirm("Terminate cluster node?")) {
+                await deleteNodeFromCloud(id);
+            }
+        };
+
+        document.getElementById('entity-form').onsubmit = async (e) => {
+            e.preventDefault();
+            // Sending keys that match your backend's primary verification
+            const node = {
+                title: document.getElementById('title').value,
+                category: selectedCategory.name,
+                frequency: document.getElementById('frequency').value,
+                amount: Number(document.getElementById('amount').value),
+                expiryDate: document.getElementById('expiryDate').value
+            };
+            const result = await pushNodeToCloud(node);
+            if (result) closeModal();
+        };
+
+        window.triggerLogout = () => {
+            localStorage.removeItem("token");
+            window.location.href = "index.html"; 
+        };
+
+        function showError(msg) {
+            const toast = document.getElementById('error-toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 5000);
+        }
+
         function showOverlay(t) {
             document.getElementById('overlay-text').innerText = t;
             const overlay = document.getElementById('global-overlay');
@@ -392,15 +437,16 @@
             overlay.classList.add('pointer-events-none');
         }
 
-        // ======================
-        // THREE.JS BG
-        // ======================
+        // ==========================================
+        // 6. INITIALIZATION
+        // ==========================================
         function init3D() {
             const canvas = document.getElementById('bg-canvas');
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
+            
             const stars = new THREE.BufferGeometry();
             const pos = new Float32Array(3000);
             for(let i=0; i<3000; i++) pos[i] = (Math.random() - 0.5) * 50;
@@ -408,13 +454,19 @@
             const starMat = new THREE.PointsMaterial({ size: 0.04, color: 0x6366f1, transparent: true, opacity: 0.4 });
             const starPoints = new THREE.Points(stars, starMat);
             scene.add(starPoints);
+            
             camera.position.z = 5;
             function animate() {
                 requestAnimationFrame(animate);
-                starPoints.rotation.y += 0.0005;
+                starPoints.rotation.y += 0.0004;
                 renderer.render(scene, camera);
             }
             animate();
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
         }
 
         window.addEventListener('load', () => {
