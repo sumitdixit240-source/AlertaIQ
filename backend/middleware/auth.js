@@ -1,76 +1,47 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-module.exports = (req, res, next) => {
+module.exports = async (req, res, next) => {
   try {
-    const authHeader =
-      req.headers.authorization || req.headers.Authorization;
+    const authHeader = req.headers.authorization;
 
-    // ================= HEADER CHECK =================
-    if (!authHeader || typeof authHeader !== "string") {
-      return res.status(401).json({
-        error: "Authorization header missing"
-      });
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Authorization required" });
     }
 
-    // ================= FORMAT CHECK =================
-    const parts = authHeader.split(" ");
+    const token = authHeader.split(" ")[1];
 
-    if (parts.length !== 2 || parts[0] !== "Bearer") {
-      return res.status(401).json({
-        error: "Invalid authorization format"
-      });
-    }
-
-    const token = parts[1];
-
-    if (!token || token.trim() === "") {
-      return res.status(401).json({
-        error: "Token not found"
-      });
-    }
-
-    // ================= VERIFY TOKEN =================
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (!decoded || !decoded.id) {
-      return res.status(401).json({
-        error: "Invalid token payload"
-      });
+    if (!decoded?.id) {
+      return res.status(401).json({ message: "Invalid token" });
     }
 
-    // ================= ATTACH USER =================
-    req.user = {
-      id: decoded.id,
-      email: decoded.email || null,
-      role: decoded.role || "user",
-      tokenVersion: decoded.tokenVersion || 0,
-      sessionId: decoded.sessionId || null
-    };
+    // ✅ USER CHECK IN DB (IMPORTANT SECURITY FIX)
+    const user = await User.findById(decoded.id);
 
-    req.token = token;
+    if (!user) {
+      return res.status(401).json({ message: "User not found" });
+    }
+
+    // ✅ TOKEN VERSION CHECK (LOGOUT SECURITY)
+    if (decoded.tokenVersion !== user.tokenVersion) {
+      return res.status(401).json({ message: "Session expired. Login again." });
+    }
+
+    req.user = {
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    };
 
     next();
 
   } catch (err) {
-
-    // ================= TOKEN EXPIRED =================
     if (err.name === "TokenExpiredError") {
-      return res.status(401).json({
-        error: "Token expired, please login again"
-      });
+      return res.status(401).json({ message: "Token expired" });
     }
 
-    // ================= INVALID TOKEN =================
-    if (err.name === "JsonWebTokenError") {
-      return res.status(401).json({
-        error: "Invalid token"
-      });
-    }
-
-    console.error("AUTH ERROR:", err.message);
-
-    return res.status(500).json({
-      error: "Authentication failed"
-    });
+    return res.status(401).json({ message: "Unauthorized" });
   }
 };
