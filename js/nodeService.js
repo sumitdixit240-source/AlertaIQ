@@ -1,10 +1,22 @@
-const BASE = "https://alertai-q.vercel.app/api";
+const BASE = "https://alertai-q.vercel.app/api/nodes";
 
 // ======================
-// GET TOKEN
+// TOKEN
 // ======================
 function getToken() {
     return localStorage.getItem("token");
+}
+
+// ======================
+// HANDLE AUTH ERROR (IMPORTANT)
+// ======================
+function handleAuthError(res, data) {
+    if (res.status === 401 || res.status === 403) {
+        localStorage.removeItem("token");
+        window.location.href = "index.html";
+        return true;
+    }
+    return false;
 }
 
 // ======================
@@ -12,25 +24,29 @@ function getToken() {
 // ======================
 async function pushNodeToCloud(node) {
     try {
-        const res = await fetch(BASE + "/nodes/create", {
+        const res = await fetch(`${BASE}/create`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer " + getToken()
+                "Authorization": `Bearer ${getToken()}`
             },
             body: JSON.stringify(node)
         });
 
         const data = await res.json();
 
+        if (handleAuthError(res, data)) return null;
+
         if (!res.ok) {
             console.error("Create error:", data);
-            return null;
+            throw new Error(data.message || data.error || "Create failed");
         }
 
-        return data._id || data.id;
+        // backend flexible response handling
+        return data.data || data.node || data._id || data.id || data;
+
     } catch (err) {
-        console.error("Network error:", err);
+        console.error("Create network error:", err);
         return null;
     }
 }
@@ -40,16 +56,27 @@ async function pushNodeToCloud(node) {
 // ======================
 async function getNodesFromCloud() {
     try {
-        const res = await fetch(BASE + "/nodes/all", {
+        const res = await fetch(`${BASE}/all`, {
             method: "GET",
             headers: {
-                "Authorization": "Bearer " + getToken()
+                "Authorization": `Bearer ${getToken()}`
             }
         });
 
-        return await res.json();
+        const data = await res.json();
+
+        if (handleAuthError(res, data)) return [];
+
+        if (!res.ok) {
+            console.error("Fetch error:", data);
+            return [];
+        }
+
+        // SAFE BACKEND COMPATIBILITY
+        return data.data || data.nodes || data.result || [];
+
     } catch (err) {
-        console.error(err);
+        console.error("Fetch network error:", err);
         return [];
     }
 }
@@ -59,16 +86,26 @@ async function getNodesFromCloud() {
 // ======================
 async function deleteNodeFromCloud(id) {
     try {
-        const res = await fetch(BASE + "/nodes/delete/" + id, {
+        const res = await fetch(`${BASE}/delete/${id}`, {
             method: "DELETE",
             headers: {
-                "Authorization": "Bearer " + getToken()
+                "Authorization": `Bearer ${getToken()}`
             }
         });
 
-        return await res.json();
+        const data = await res.json();
+
+        if (handleAuthError(res, data)) return null;
+
+        if (!res.ok) {
+            console.error("Delete error:", data);
+            return null;
+        }
+
+        return data.success ? true : data;
+
     } catch (err) {
-        console.error(err);
+        console.error("Delete network error:", err);
         return null;
     }
 }
