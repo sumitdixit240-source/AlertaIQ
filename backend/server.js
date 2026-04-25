@@ -22,10 +22,52 @@ const server = http.createServer(app);
 // ================= TRUST PROXY =================
 app.set("trust proxy", 1);
 
-// ================= SOCKET =================
+// ================= SECURITY HEADERS =================
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+  })
+);
+
+// ================= CORS (FIXED PRODUCTION VERSION) =================
+const allowedOrigins = [
+  "https://alertai-q.vercel.app",
+  "http://127.0.0.1:5500",
+  "http://localhost:5500",
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(null, false);
+      }
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+// ✅ IMPORTANT: Handle preflight requests
+app.options("*", cors());
+
+// ================= BODY PARSER =================
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// ================= DATA SANITIZATION =================
+app.use(mongoSanitize());
+app.use(xss());
+
+// ================= SOCKET.IO =================
 const io = socketIo(server, {
   cors: {
-    origin: process.env.FRONTEND_URL || "*",
+    origin: allowedOrigins,
     credentials: true,
   },
 });
@@ -36,7 +78,7 @@ io.on("connection", (socket) => {
   console.log("⚡ Socket Connected:", socket.id);
 
   socket.on("join", (userId) => {
-    if (typeof userId === "string" && userId.length < 100) {
+    if (userId && typeof userId === "string") {
       socket.join(userId);
     }
   });
@@ -46,48 +88,19 @@ io.on("connection", (socket) => {
   });
 });
 
-// ================= SECURITY HEADERS =================
-app.use(
-  helmet({
-    crossOriginResourcePolicy: { policy: "cross-origin" },
-  })
-);
-
-// ================= BODY PARSER (REQUIRED FIX) =================
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// ================= CORS (UPDATED AS REQUESTED) =================
-app.use(
-  cors({
-    origin: [
-      "http://127.0.0.1:5500",
-      "http://localhost:5500",
-      "https://your-frontend-domain.com",
-    ],
-    credentials: true,
-  })
-);
-
-// ================= DATA SANITIZATION =================
-app.use(mongoSanitize());
-app.use(xss());
-
 // ================= GLOBAL RATE LIMIT =================
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  standardHeaders: true,
-  legacyHeaders: false,
   message: "Too many requests, try again later.",
 });
 
 app.use("/api", limiter);
 
-// ================= OTP / AUTH RATE LIMIT (ANTI-SPAM FIX) =================
+// ================= OTP / AUTH RATE LIMIT =================
 const authLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 10, // 10 requests per minute
+  windowMs: 1 * 60 * 1000,
+  max: 10,
   message: "Too many OTP requests. Please wait a moment.",
 });
 
@@ -136,7 +149,7 @@ async function startServer() {
     server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log("🔐 Security: ENABLED");
-      console.log("🌍 CORS ENABLED");
+      console.log("🌍 CORS FIXED");
     });
   } catch (err) {
     console.error("❌ DB CONNECTION ERROR:", err.message);
