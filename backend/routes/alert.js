@@ -93,10 +93,56 @@ router.post("/send-otp", auth, async (req, res) => {
     });
 
     await sendMail(
-      email,
-      "RenewAI OTP Verification",
-      `<h2>Your OTP is: ${otp}</h2><p>Valid for 5 minutes</p>`
-    );
+  email,
+  "AlertAIQ OTP Verification",
+  `
+  <div style="margin:0;padding:0;background:#f4f6fb;font-family:Arial,sans-serif;">
+    
+    <div style="max-width:520px;margin:40px auto;background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.08);">
+      
+      <!-- Header -->
+      <div style="background:linear-gradient(135deg,#4F46E5,#6366F1);padding:20px;text-align:center;color:#fff;">
+        <h1 style="margin:0;font-size:22px;">AlertAIQ</h1>
+        <p style="margin:5px 0 0;font-size:13px;opacity:0.9;">Smart Alerts & Notifications</p>
+      </div>
+
+      <!-- Body -->
+      <div style="padding:25px;color:#333;">
+        
+        <h2 style="margin-top:0;font-size:18px;">OTP Verification</h2>
+
+        <p style="font-size:14px;line-height:1.6;">
+          Your AlertAIQ OTP is shown below. Use this One-Time Password to securely complete your verification. 
+          This code ensures your account remains protected and accessible only to you. 
+          Please enter it promptly before it expires.
+        </p>
+
+        <!-- OTP Box -->
+        <div style="margin:25px 0;text-align:center;">
+          <span style="display:inline-block;padding:14px 28px;font-size:26px;letter-spacing:4px;font-weight:bold;background:#eef2ff;color:#4F46E5;border-radius:8px;">
+            ${otp}
+          </span>
+        </div>
+
+        <!-- Points -->
+        <ul style="padding-left:18px;font-size:14px;line-height:1.6;">
+          <li>Valid for 5 minutes only</li>
+          <li>Never share this OTP with anyone</li>
+          <li>Ignore this email if not requested</li>
+        </ul>
+
+      </div>
+
+      <!-- Footer -->
+      <div style="background:#f9fafc;padding:15px;text-align:center;font-size:12px;color:#888;">
+        © AlertAIQ — Secure Notification Platform  
+      </div>
+
+    </div>
+
+  </div>
+  `
+);
 
     res.json({
       success: true,
