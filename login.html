@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AlertAIQ | Total Expense & Security Management</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
@@ -20,12 +20,19 @@
             --acc-glow: rgba(99, 102, 241, 0.12);
         }
 
+        * {
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
             background-color: var(--bg);
             color: #ffffff;
             overflow-x: hidden;
             width: 100%;
+            margin: 0;
+            padding: 0;
         }
 
         .velo-canvas {
@@ -42,32 +49,35 @@
             position: fixed;
             inset: 0;
             background-image: linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px);
-            background-size: clamp(30px, 5vw, 50px) clamp(30px, 5vw, 50px);
+            background-size: 40px 40px;
             mask-image: radial-gradient(circle at center, black, transparent 90%);
             z-index: -1;
-            opacity: 0.5;
+            opacity: 0.3;
         }
 
-        .glow-cursor {
-            position: absolute;
-            width: clamp(300px, 50vw, 600px);
-            height: clamp(300px, 50vw, 600px);
-            background: radial-gradient(circle, var(--acc-glow) 0%, transparent 70%);
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 0;
-            transform: translate(-50%, -50%);
-            transition: opacity 0.3s;
-            display: none;
-        }
-
+        /* Mouse Glow only on non-touch devices */
         @media (pointer: fine) {
-            .glow-cursor { display: block; }
+            .glow-cursor {
+                position: fixed;
+                width: 600px;
+                height: 600px;
+                background: radial-gradient(circle, var(--acc-glow) 0%, transparent 70%);
+                border-radius: 50%;
+                pointer-events: none;
+                z-index: 0;
+                transform: translate(-50%, -50%);
+                transition: opacity 0.3s;
+                display: block;
+            }
+        }
+        @media (pointer: coarse) {
+            .glow-cursor { display: none !important; }
         }
 
         .glass-card {
             background: rgba(15, 15, 18, 0.7);
             backdrop-filter: blur(24px) saturate(180%);
+            -webkit-backdrop-filter: blur(24px) saturate(180%);
             border: 1px solid var(--border);
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
             border-radius: 24px;
@@ -76,7 +86,7 @@
         .input-group {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--border);
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s ease;
             border-radius: 12px;
         }
 
@@ -89,32 +99,33 @@
         .btn-startup {
             background: var(--primary);
             color: #ffffff;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.19, 1, 0.22, 1);
-            border-radius: 12px;
-            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.39);
+            font-weight: 700;
+            transition: all 0.2s ease;
+            border-radius: 14px;
+            box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3);
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 1rem;
+            padding: 1rem 1.5rem;
             min-height: 56px;
         }
 
-        .btn-startup:active { transform: scale(0.98); }
-        .btn-startup:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(1); }
+        .btn-startup:active { transform: scale(0.96); }
+        .btn-startup:disabled { opacity: 0.5; filter: grayscale(1); }
 
         #overlay {
             position: fixed;
             inset: 0;
             background: rgba(0, 0, 0, 0.85);
             backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
             display: flex;
             align-items: center;
             justify-content: center;
             z-index: 100;
             opacity: 0;
             pointer-events: none;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: opacity 0.3s ease;
             padding: 1rem;
         }
 
@@ -122,24 +133,26 @@
 
         .modal-content {
             max-height: 90vh;
+            width: 100%;
             overflow-y: auto;
             scrollbar-width: none;
+            -ms-overflow-style: none;
         }
         .modal-content::-webkit-scrollbar { display: none; }
 
         .scan-container {
             position: relative;
-            width: clamp(100px, 20vw, 140px);
-            height: clamp(100px, 20vw, 140px);
+            width: 120px;
+            height: 120px;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin-bottom: 2rem;
+            margin-bottom: 1.5rem;
         }
 
         .scan-ring-bold {
             position: absolute;
-            inset: -10px;
+            inset: -8px;
             border: 3px solid var(--primary);
             border-radius: 50%;
             animation: ring-pulse 2s infinite;
@@ -147,61 +160,59 @@
 
         @keyframes ring-pulse {
             0% { transform: scale(0.8); opacity: 1; border-width: 4px; }
-            100% { transform: scale(1.4); opacity: 0; border-width: 1px; }
+            100% { transform: scale(1.3); opacity: 0; border-width: 1px; }
         }
 
         .scan-line-bold {
             width: 100%;
-            height: 20px;
-            background: linear-gradient(to bottom, transparent, var(--primary), transparent);
+            height: 2px;
+            background: var(--primary);
+            box-shadow: 0 0 15px var(--primary);
             position: absolute;
             top: 0;
-            animation: scan-vertical 1.5s ease-in-out infinite;
-            filter: blur(4px);
-            opacity: 0.8;
+            animation: scan-vertical 2s ease-in-out infinite;
             z-index: 2;
         }
 
         @keyframes scan-vertical {
-            0% { transform: translateY(-10px); }
-            100% { transform: translateY(clamp(90px, 18vw, 130px)); }
+            0%, 100% { top: 10%; opacity: 0.5; }
+            50% { top: 90%; opacity: 1; }
         }
 
         .badge {
             background: rgba(99, 102, 241, 0.1);
             color: var(--primary);
-            padding: 6px 12px;
+            padding: 6px 14px;
             border-radius: 100px;
-            font-size: 10px;
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
+            letter-spacing: 0.05em;
             border: 1px solid rgba(99, 102, 241, 0.2);
         }
 
+        /* Message Box Positioning */
         #msg-box {
             position: fixed;
             top: 1rem;
             left: 50%;
-            transform: translate(-50%, -100%);
+            transform: translateX(-50%) translateY(-150%);
             z-index: 200;
             opacity: 0;
-            pointer-events: none;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            border-radius: 16px;
+            transition: all 0.4s cubic-bezier(0.18, 0.89, 0.32, 1.28);
             width: calc(100% - 2rem);
-            max-width: 400px;
+            max-width: 380px;
         }
-
-        #msg-box.active { transform: translate(-50%, 0); opacity: 1; }
+        #msg-box.active { transform: translateX(-50%) translateY(0); opacity: 1; }
 
         @media (min-width: 768px) {
-            #msg-box { left: auto; right: 1.5rem; transform: translateY(-20px); width: auto; }
+            #msg-box { left: auto; right: 1.5rem; transform: translateY(-150%); }
             #msg-box.active { transform: translateY(0); }
         }
 
+        /* Typography sizing */
         .font-mono-custom { font-family: 'JetBrains Mono', monospace; }
-        .hero-title { font-size: clamp(2.5rem, 8vw, 4rem); line-height: 1.1; }
+        .hero-title { font-size: clamp(2.25rem, 7vw, 4.5rem); line-height: 1.1; letter-spacing: -0.02em; }
     </style>
 </head>
 
@@ -211,217 +222,254 @@
 <div class="grid-overlay"></div>
 <div id="glow" class="glow-cursor"></div>
 
-<!-- Custom Message Box for System Notifications -->
+<!-- Alerts Container -->
 <div id="msg-box" class="glass-card px-5 py-4 flex items-center gap-4 border-l-4 border-indigo-500">
-    <div class="w-8 h-8 bg-indigo-500/10 rounded-full flex items-center justify-center flex-shrink-0">
-        <i class="fas fa-shield-check text-indigo-500 text-sm"></i>
+    <div class="w-10 h-10 bg-indigo-500/10 rounded-full flex items-center justify-center flex-shrink-0">
+        <i class="fas fa-shield-check text-indigo-500 text-lg"></i>
     </div>
     <div class="overflow-hidden">
-        <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest truncate">System Status</p>
-        <span id="msg-text" class="text-sm font-medium text-white block truncate"></span>
+        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Notification</p>
+        <span id="msg-text" class="text-sm font-semibold text-white block truncate">System Operational</span>
     </div>
 </div>
 
-<header class="fixed top-0 w-full p-5 md:p-8 flex justify-between items-center z-50 bg-black/40 backdrop-blur-xl border-b border-white/5">
+<header class="fixed top-0 w-full p-4 md:p-6 lg:p-8 flex justify-between items-center z-50 bg-black/40 backdrop-blur-xl border-b border-white/5">
     <div class="flex items-center gap-3">
-        <div class="w-9 h-9 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-500/20">
-            <i class="fas fa-bolt text-white text-sm"></i>
+        <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+            <i class="fas fa-bolt text-white text-base"></i>
         </div>
-        <span class="text-lg font-extrabold tracking-tight">Alert<span class="text-indigo-500">AIQ</span></span>
+        <span class="text-xl font-extrabold tracking-tight">Alert<span class="text-indigo-500">AIQ</span></span>
     </div>
-    <div class="hidden md:flex items-center gap-8 text-[13px] font-semibold">
+    
+    <nav class="hidden md:flex items-center gap-8 text-[13px] font-bold">
         <span id="user-welcome" class="text-indigo-300 font-mono-custom text-[11px] hidden"></span>
-        <a href="#" class="text-white hover:opacity-80 transition">Services</a>
-        <a href="#" class="text-slate-400 hover:text-white transition">Pricing</a>
-        <button id="auth-header-btn" onclick="UI.open()" class="text-indigo-400 hover:text-indigo-300 transition">Login</button>
-    </div>
-    <button onclick="UI.open()" class="md:hidden w-9 h-9 bg-white/5 rounded-lg flex items-center justify-center text-white">
-        <i class="fas fa-user text-xs"></i>
+        <a href="#" class="text-slate-300 hover:text-white transition">Services</a>
+        <a href="#" class="text-slate-300 hover:text-white transition">Pricing</a>
+        <button id="auth-header-btn" onclick="UI.open()" class="bg-white/10 px-5 py-2.5 rounded-xl hover:bg-white/20 transition">Login</button>
+    </nav>
+
+    <button onclick="UI.open()" class="md:hidden w-11 h-11 bg-white/5 rounded-xl flex items-center justify-center text-white border border-white/10">
+        <i class="fas fa-user-shield text-sm"></i>
     </button>
 </header>
 
-<main class="relative z-10 pt-28 pb-12 px-5 md:px-12">
-    <div class="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center mb-24 md:mb-32">
-        <div class="space-y-6 md:space-y-8 text-center lg:text-left">
+<main class="relative z-10 pt-32 pb-16 px-6 md:px-12 lg:px-24">
+    <div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+        <!-- Hero Content -->
+        <div class="space-y-8 text-center lg:text-left">
             <div class="flex justify-center lg:justify-start">
-                <span class="badge">Intelligence Redefined</span>
+                <span class="badge">Next-Gen FinTech</span>
             </div>
             
-            <h1 class="hero-title font-extrabold tracking-tight text-white">
-                Track Every Bill. <br>
-                <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Stop Wasting Money.</span>
+            <h1 class="hero-title font-extrabold text-white">
+                Track Every Bill.<br>
+                <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Stop Financial Leaks.</span>
             </h1>
             
-            <p class="text-slate-400 text-base md:text-lg font-medium leading-relaxed max-w-lg mx-auto lg:mx-0">
-                AlertAIQ handles your subscriptions, bills, taxes, and business costs. We alert you before you pay, so you stay in control of your financial destiny.
+            <p class="text-slate-400 text-base md:text-xl font-medium leading-relaxed max-w-xl mx-auto lg:mx-0">
+                Automated security for your expenses. We scan, sync, and alert you before payments hit your account. Total control, zero stress.
             </p>
 
-            <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-2">
-                <button onclick="UI.open()" class="btn-startup px-8 py-4 w-full sm:w-auto text-sm md:text-base">
-                    Start Tracking Free
+            <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 pt-4">
+                <button onclick="UI.open()" class="btn-startup px-10 py-5 w-full sm:w-auto text-base">
+                    Access Dashboard
                 </button>
-                <button class="px-6 py-4 font-semibold text-slate-300 hover:text-white transition flex items-center text-sm">
-                    Watch Demo <i class="fas fa-play ml-2 text-[10px] opacity-50"></i>
+                <button class="px-8 py-5 font-bold text-slate-300 hover:text-white transition flex items-center group">
+                    View Demo 
+                    <div class="ml-3 w-8 h-8 rounded-full bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition">
+                        <i class="fas fa-play text-[10px]"></i>
+                    </div>
                 </button>
+            </div>
+
+            <!-- Stats/Social Proof (Mobile friendly grid) -->
+            <div class="grid grid-cols-3 gap-4 pt-8 border-t border-white/5 max-w-md mx-auto lg:mx-0">
+                <div>
+                    <div class="text-xl font-bold font-mono-custom">4.9k</div>
+                    <div class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Active Users</div>
+                </div>
+                <div>
+                    <div class="text-xl font-bold font-mono-custom">99.9%</div>
+                    <div class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Uptime</div>
+                </div>
+                <div>
+                    <div class="text-xl font-bold font-mono-custom">$2M+</div>
+                    <div class="text-[10px] text-slate-500 uppercase font-black tracking-widest">Leaks Saved</div>
+                </div>
             </div>
         </div>
 
-        <div class="relative max-w-lg mx-auto w-full lg:max-w-none">
-            <div class="glass-card p-6 md:p-8 aspect-video flex flex-col justify-between border-indigo-500/20 relative overflow-hidden">
-                <div class="flex justify-between items-start relative z-10">
-                    <div class="space-y-1">
-                        <div class="text-[9px] text-indigo-400 font-bold uppercase tracking-widest">Monthly Spending</div>
-                        <div class="text-2xl md:text-3xl font-bold font-mono-custom">$2,410.50</div>
+        <!-- Dashboard Preview Card -->
+        <div class="relative w-full max-w-2xl mx-auto lg:ml-auto">
+            <div class="glass-card p-6 md:p-10 border-indigo-500/20 relative overflow-hidden group">
+                <!-- Background Accent -->
+                <div class="absolute -top-24 -right-24 w-64 h-64 bg-indigo-500/10 blur-[80px] rounded-full"></div>
+                
+                <div class="flex justify-between items-start mb-10 relative z-10">
+                    <div class="space-y-2">
+                        <div class="text-[10px] text-indigo-400 font-black uppercase tracking-[0.2em]">Live Account Sync</div>
+                        <div class="text-3xl md:text-4xl font-bold font-mono-custom tracking-tighter">$4,281.40</div>
                     </div>
-                    <div class="bg-indigo-500/20 text-indigo-400 px-2 py-1 rounded text-[9px] font-bold">LIVE SYNC</div>
+                    <div class="flex flex-col items-end gap-2">
+                        <span class="flex items-center gap-2 text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-1 rounded">
+                            <span class="w-1 h-1 rounded-full bg-emerald-400 animate-pulse"></span> SECURE
+                        </span>
+                    </div>
                 </div>
-                <div class="space-y-4 relative z-10">
-                    <div class="flex justify-between text-[11px] text-slate-400 font-medium">
-                        <span>Netflix Renewal (Tomorrow)</span>
-                        <span class="text-white">$15.99</span>
+
+                <div class="space-y-6 relative z-10">
+                    <div class="space-y-3">
+                        <div class="flex justify-between text-xs font-bold text-slate-400">
+                            <span>Cloud Services (AWS)</span>
+                            <span class="text-white">$142.00</span>
+                        </div>
+                        <div class="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                            <div class="h-full bg-indigo-500 w-[65%] rounded-full shadow-[0_0_15px_rgba(99,102,241,0.5)]"></div>
+                        </div>
                     </div>
-                    <div class="h-1.5 w-full bg-white/5 rounded-full">
-                        <div class="h-full bg-indigo-500 w-3/4 rounded-full"></div>
+
+                    <div class="bg-black/60 rounded-2xl p-5 border border-white/5 font-mono-custom text-[11px] text-indigo-300/80 leading-relaxed space-y-1">
+                        <div class="flex gap-2">
+                            <span class="text-indigo-500/50">#</span> 
+                            <span>Scanning 12 bank protocols...</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="text-indigo-500/50">#</span> 
+                            <span class="text-amber-400">Warning: Unusually high heating bill detected.</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <span class="text-indigo-500/50">#</span> 
+                            <span class="text-emerald-400">Success: Subscription "Prime" cancelled.</span>
+                        </div>
                     </div>
-                </div>
-                <div class="bg-black/40 rounded-xl p-4 font-mono-custom text-[9px] md:text-[10px] text-indigo-300/60 leading-relaxed border border-white/5 relative z-10">
-                    &gt; Scanning: 42 Active Subscriptions...<br>
-                    &gt; Alert: Electricity bill due in 2 days.<br>
-                    &gt; Insight: Saved $45 this month on ChatGPT Plus.
                 </div>
             </div>
         </div>
     </div>
 </main>
 
+<!-- Auth Modal -->
 <div id="overlay">
-    <div class="glass-card w-full max-w-[460px] relative overflow-hidden flex flex-col bg-[#050507] modal-content">
+    <div class="glass-card w-full max-w-[480px] relative overflow-hidden flex flex-col bg-[#050507] modal-content shadow-2xl">
         
-        <button id="modal-close" onclick="UI.close()" class="absolute top-5 right-5 w-9 h-9 flex items-center justify-center rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition z-[110]">
-            <i class="fas fa-times text-xs"></i>
+        <button id="modal-close" onclick="UI.close()" class="absolute top-6 right-6 w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition z-[110]">
+            <i class="fas fa-times"></i>
         </button>
 
         <!-- Verification/Scanning State -->
         <div id="verifyBox" class="hidden absolute inset-0 bg-[#050507] z-[120] flex flex-col items-center justify-center p-8 text-center">
             <div class="scan-container">
                 <div class="scan-ring-bold"></div>
-                <div class="w-20 h-20 md:w-24 md:h-24 border-4 border-indigo-500 relative bg-indigo-500/10 rounded-full flex items-center justify-center overflow-hidden shadow-[0_0_60px_rgba(99,102,241,0.3)]">
+                <div class="w-24 h-24 border-2 border-indigo-500/30 relative bg-indigo-500/5 rounded-full flex items-center justify-center overflow-hidden">
                     <div class="scan-line-bold"></div>
-                    <i class="fas fa-fingerprint text-4xl md:text-5xl text-white"></i>
+                    <i class="fas fa-fingerprint text-5xl text-indigo-500"></i>
                 </div>
             </div>
-            <h3 id="verify-title" class="text-xl md:text-2xl font-black text-white tracking-tight uppercase">Initiating Sequence</h3>
-            <p id="verify-desc" class="text-indigo-400 font-mono-custom text-[10px] mt-3 uppercase tracking-[0.2em]">Securing your connection...</p>
+            <h3 id="verify-title" class="text-2xl font-black text-white tracking-tight uppercase">Encrypting</h3>
+            <p id="verify-desc" class="text-slate-500 font-mono-custom text-[10px] mt-3 uppercase tracking-[0.2em]">Securing session tunnel...</p>
         </div>
 
         <div id="successBox" class="hidden absolute inset-0 bg-indigo-600 z-[120] flex flex-col items-center justify-center p-8 text-center">
-            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-2xl">
-                <i class="fas fa-check text-indigo-600 text-2xl"></i>
+            <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-6 shadow-2xl">
+                <i class="fas fa-check text-indigo-600 text-3xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-white tracking-tight">Access Granted</h3>
-            <p class="text-indigo-100 text-xs mt-2">Opening secure portal...</p>
+            <h3 class="text-2xl font-bold text-white tracking-tight">Access Granted</h3>
+            <p class="text-indigo-100 text-sm mt-2 font-medium">Redirecting to secure terminal...</p>
         </div>
 
         <!-- Login View -->
         <div id="loginBox" class="p-8 md:p-12 space-y-8 flex-1">
-            <div class="space-y-2 text-center lg:text-left">
-                <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Member Access</h2>
-                <p class="text-slate-500 text-xs md:text-sm font-medium">Authorized personnel only.</p>
+            <div class="space-y-2 text-center">
+                <h2 class="text-3xl font-extrabold tracking-tight">Login</h2>
+                <p class="text-slate-500 text-sm font-medium">Authentication required to proceed.</p>
             </div>
 
-            <div class="flex bg-white/5 p-1 rounded-xl border border-white/5">
-                <button id="mode-otp" onclick="UI.setMode('otp')" class="flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black">Login Code</button>
-                <button id="mode-pass" onclick="UI.setMode('pass')" class="flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all text-slate-400">Password</button>
+            <div class="flex bg-white/5 p-1 rounded-2xl border border-white/5">
+                <button id="mode-otp" onclick="UI.setMode('otp')" class="flex-1 py-3 text-[11px] font-black rounded-xl transition-all bg-white text-black">ONE-TIME CODE</button>
+                <button id="mode-pass" onclick="UI.setMode('pass')" class="flex-1 py-3 text-[11px] font-black rounded-xl transition-all text-slate-500">PASSWORD</button>
             </div>
 
-            <div class="space-y-4">
-                <div class="space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-500 px-1 uppercase tracking-wider">Email Address</label>
-                    <div class="input-group p-3.5 flex items-center gap-3">
-                        <i class="far fa-envelope text-slate-500 text-xs"></i>
-                        <input id="email" type="email" class="bg-transparent w-full outline-none text-sm text-white" placeholder="user@alertaiq.com">
+            <div class="space-y-5">
+                <div class="space-y-2">
+                    <label class="text-[10px] font-black text-slate-500 px-1 uppercase tracking-widest">User ID / Email</label>
+                    <div class="input-group p-4 flex items-center gap-4">
+                        <i class="far fa-envelope text-slate-500"></i>
+                        <input id="email" type="email" class="bg-transparent w-full outline-none text-base text-white" placeholder="agent@alertaiq.com">
                     </div>
                 </div>
 
-                <div id="pass-group" class="hidden space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-500 px-1 uppercase tracking-wider">Security Key</label>
-                    <div class="input-group p-3.5 flex items-center gap-3">
-                        <i class="far fa-lock text-slate-500 text-xs"></i>
-                        <input id="password" type="password" class="bg-transparent w-full outline-none text-sm text-white" placeholder="••••••••">
+                <div id="pass-group" class="hidden space-y-2">
+                    <label class="text-[10px] font-black text-slate-500 px-1 uppercase tracking-widest">Secret Key</label>
+                    <div class="input-group p-4 flex items-center gap-4">
+                        <i class="far fa-lock text-slate-500"></i>
+                        <input id="password" type="password" class="bg-transparent w-full outline-none text-base text-white" placeholder="••••••••">
                     </div>
                 </div>
 
-                <div id="otp-group" class="hidden space-y-1.5">
-                    <label class="text-[10px] font-bold text-slate-500 px-1 uppercase tracking-wider text-center block">Verification Token</label>
-                    <div class="input-group p-3.5">
-                        <input id="otp-code" type="text" maxlength="6" class="bg-transparent w-full outline-none text-2xl font-mono-custom text-center tracking-[0.3em] text-white" placeholder="000000">
+                <div id="otp-group" class="hidden space-y-2">
+                    <label class="text-[10px] font-black text-slate-500 px-1 uppercase tracking-widest text-center block">Verification Token</label>
+                    <div class="input-group p-4">
+                        <input id="otp-code" type="text" maxlength="6" class="bg-transparent w-full outline-none text-3xl font-mono-custom text-center tracking-[0.4em] text-white" placeholder="000000">
                     </div>
                 </div>
             </div>
 
-            <button id="main-btn" onclick="Auth.handleLogin()" class="btn-startup w-full text-xs uppercase tracking-widest font-bold">
-                Unlock Dashboard
+            <button id="main-btn" onclick="Auth.handleLogin()" class="btn-startup w-full text-sm uppercase tracking-[0.2em] font-black">
+                Send OTP
             </button>
 
             <div class="text-center pt-6 border-t border-white/5">
-                <button onclick="UI.showRegister()" class="text-[10px] text-indigo-400 hover:text-indigo-300 font-bold uppercase tracking-wider transition">Initialize New Account</button>
+                <p class="text-xs text-slate-500 mb-4">New to the platform?</p>
+                <button onclick="UI.showRegister()" class="text-[11px] text-indigo-400 hover:text-indigo-300 font-black uppercase tracking-widest transition">Initialize Registration</button>
             </div>
         </div>
 
         <!-- Register View -->
         <div id="registerBox" class="hidden p-8 md:p-12 space-y-8 flex-1">
-            <div class="space-y-2 text-center lg:text-left">
-                <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-white">Join the Force</h2>
-                <p class="text-slate-500 text-xs font-medium">Deploy your personal financial monitor.</p>
+            <div class="space-y-2 text-center">
+                <h2 class="text-3xl font-extrabold tracking-tight text-white">Register</h2>
+                <p class="text-slate-500 text-sm font-medium">Create your secure financial profile.</p>
             </div>
             
-            <div class="space-y-4">
-                <div class="input-group p-3.5 flex items-center gap-3">
-                    <i class="far fa-user text-slate-500 text-xs"></i>
-                    <input id="rname" class="bg-transparent w-full outline-none text-sm text-white" placeholder="Username (Display Name)">
+            <div class="space-y-5">
+                <div class="input-group p-4 flex items-center gap-4">
+                    <i class="far fa-user text-slate-500"></i>
+                    <input id="rname" class="bg-transparent w-full outline-none text-base text-white" placeholder="Display Name">
                 </div>
-                <div class="input-group p-3.5 flex items-center gap-3">
-                    <i class="far fa-envelope text-slate-500 text-xs"></i>
-                    <input id="remail" type="email" class="bg-transparent w-full outline-none text-sm text-white" placeholder="Email Address">
+                <div class="input-group p-4 flex items-center gap-4">
+                    <i class="far fa-envelope text-slate-500"></i>
+                    <input id="remail" type="email" class="bg-transparent w-full outline-none text-base text-white" placeholder="Email Address">
                 </div>
-                <div class="input-group p-3.5 flex items-center gap-3">
-                    <i class="far fa-lock text-slate-500 text-xs"></i>
-                    <input id="rpass" type="password" class="bg-transparent w-full outline-none text-sm text-white" placeholder="Set Security Password">
+                <div class="input-group p-4 flex items-center gap-4">
+                    <i class="far fa-lock text-slate-500"></i>
+                    <input id="rpass" type="password" class="bg-transparent w-full outline-none text-base text-white" placeholder="Security Password">
                 </div>
             </div>
 
-            <button id="reg-btn" onclick="Auth.register()" class="btn-startup w-full text-xs uppercase tracking-widest font-bold">
-                Create My Account
+            <button id="reg-btn" onclick="Auth.register()" class="btn-startup w-full text-sm uppercase tracking-[0.2em] font-black">
+                Deploy Account
             </button>
 
             <div class="text-center pt-6 border-t border-white/5">
-                <button onclick="UI.showLogin()" class="text-[10px] text-slate-500 hover:text-white font-bold uppercase tracking-wider transition">Back to Login</button>
+                <button onclick="UI.showLogin()" class="text-[11px] text-slate-500 hover:text-white font-black uppercase tracking-widest transition">Return to Login</button>
             </div>
         </div>
     </div>
 </div>
 
 <script>
-// ✅ BACKEND CONFIGURATION
+// BACKEND CONFIGURATION
 const BACKEND_URL = "https://alertaiq.onrender.com";
 let isLoading = false;
 
-/**
- * SAFE FETCH WRAPPER
- * ✅ FIX: Automatically sends Bearer token for all requests (e.g. for /api/auth/me)
- * ✅ FIX: Automatically handles 401 Unauthorized for protected routes.
- */
 async function safeFetch(url, options = {}) {
     const token = localStorage.getItem("token");
-    
-    // Prepare headers
     const headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
         ...(options.headers || {})
     };
 
-    // ✅ ADDED: Inject Authorization header if token exists
     if (token) {
         headers["Authorization"] = `Bearer ${token}`;
     }
@@ -431,10 +479,9 @@ async function safeFetch(url, options = {}) {
     try {
         const res = await fetch(url, config);
         
-        // ✅ ADDED: Global handler for expired or invalid tokens
-        if (res.status === 401 && !url.includes('/login') && !url.includes('/register') && !url.includes('/verify-otp')) {
+        if (res.status === 401 && !url.includes('/login') && !url.includes('/register')) {
             Auth.logout();
-            throw new Error("Session expired. Please log in again.");
+            throw new Error("Session expired.");
         }
 
         let data = {};
@@ -446,7 +493,7 @@ async function safeFetch(url, options = {}) {
         }
 
         if (!res.ok) {
-            throw new Error(data.message || data.msg || `Server Error (${res.status})`);
+            throw new Error(data.message || data.msg || `Error (${res.status})`);
         }
 
         return data;
@@ -478,7 +525,7 @@ const UI = {
         document.getElementById('password').value = '';
         document.getElementById('otp-code').value = '';
         document.getElementById('otp-group').classList.add('hidden');
-        document.getElementById('main-btn').innerText = 'Unlock Dashboard';
+        document.getElementById('main-btn').innerText = this.mode === 'otp' ? 'Send OTP' : 'Unlock Dashboard';
         document.getElementById('main-btn').disabled = false;
         document.getElementById('verifyBox').classList.add('hidden');
         document.getElementById('successBox').classList.add('hidden');
@@ -520,12 +567,12 @@ const UI = {
         const passBtn = document.getElementById('mode-pass');
         
         if (m === 'otp') {
-            otpBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black";
-            passBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all text-slate-400";
+            otpBtn.className = "flex-1 py-3 text-[11px] font-black rounded-xl transition-all bg-white text-black";
+            passBtn.className = "flex-1 py-3 text-[11px] font-black rounded-xl transition-all text-slate-500";
             document.getElementById('main-btn').innerText = 'Send OTP';
         } else {
-            passBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black";
-            otpBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all text-slate-400";
+            passBtn.className = "flex-1 py-3 text-[11px] font-black rounded-xl transition-all bg-white text-black";
+            otpBtn.className = "flex-1 py-3 text-[11px] font-black rounded-xl transition-all text-slate-500";
             document.getElementById('main-btn').innerText = 'Unlock Dashboard';
         }
 
@@ -544,7 +591,7 @@ const UI = {
         const welcome = document.getElementById("user-welcome");
         const btn = document.getElementById("auth-header-btn");
         if (user) {
-            welcome.innerText = `AGENT: ${user.name || user.email}`;
+            welcome.innerText = `AGENT: ${user.name || 'ACTIVE'}`;
             welcome.classList.remove("hidden");
             btn.innerText = "Logout";
             btn.onclick = () => Auth.logout();
@@ -564,7 +611,7 @@ const Auth = {
         const password = document.getElementById("password").value.trim();
         const otp = document.getElementById("otp-code").value.trim();
 
-        if (!email) return UI.notify("⚠️ Enter email address");
+        if (!email) return UI.notify("⚠️ Enter User ID");
 
         isLoading = true;
         UI.showVerification("Authentication", "Verifying credentials...");
@@ -578,9 +625,9 @@ const Auth = {
                     });
                     UI.step = 'otp_sent';
                     UI.hideVerification();
-                    UI.notify("✅ OTP sent to email");
+                    UI.notify("✅ Token dispatched to email");
                     document.getElementById('otp-group').classList.remove('hidden');
-                    document.getElementById('main-btn').innerText = "Verify OTP";
+                    document.getElementById('main-btn').innerText = "Verify Token";
                     return;
                 }
 
@@ -588,11 +635,6 @@ const Auth = {
                     method: "POST",
                     body: JSON.stringify({ email, otp })
                 });
-
-                // ✅ FIX: Reset OTP Flow state after success
-                UI.step = 'idle';
-                document.getElementById('otp-group').classList.add('hidden');
-                document.getElementById('main-btn').innerText = 'Unlock Dashboard';
 
                 this.saveSession(data.token);
                 return;
@@ -618,18 +660,18 @@ const Auth = {
         const email = document.getElementById("remail").value.trim();
         const password = document.getElementById("rpass").value.trim();
 
-        if (!name || !email || !password) return UI.notify("⚠️ Fill all fields");
+        if (!name || !email || !password) return UI.notify("⚠️ Incomplete payload");
 
         isLoading = true;
-        UI.showVerification("Constructing Profile", "Setting up security...");
+        UI.showVerification("Initializing", "Writing profile to blockchain...");
         
         try {
             await safeFetch(`${BACKEND_URL}/api/auth/register`, {
                 method: "POST",
                 body: JSON.stringify({ name, email, password })
             });
-            UI.notify("✅ Account Created! Please Login.");
-            setTimeout(() => UI.showLogin(), 2000);
+            UI.notify("✅ Registry entry created.");
+            setTimeout(() => UI.showLogin(), 1500);
         } catch (err) {
             UI.hideVerification();
             UI.notify("❌ " + err.message);
@@ -643,10 +685,11 @@ const Auth = {
             localStorage.setItem("token", token);
             localStorage.setItem("token_time", Date.now());
             UI.showSuccess();
-            // ✅ Redirect to dashboard instead of location.reload()
+            // In a real app, you'd route to your dashboard.html here
             setTimeout(() => {
-                window.location.href = "dashboard.html";
-            }, 1500);
+                UI.notify("Ready for deployment.");
+                location.reload(); 
+            }, 2000);
         }
     },
 
@@ -656,40 +699,28 @@ const Auth = {
         location.reload();
     },
 
-    /**
-     * ✅ PROTECTED ROUTE CALL
-     * Uses safeFetch which now correctly injects the Authorization header.
-     */
     async syncProfile() {
         if (!localStorage.getItem("token")) return;
         try {
             const user = await safeFetch(`${BACKEND_URL}/api/auth/me`);
             UI.updateAuthUI(user);
         } catch (e) {
-            console.error("Profile sync failed", e);
+            console.error("Sync failed", e);
         }
     }
 };
 
 window.addEventListener("load", () => {
     const token = localStorage.getItem("token");
-    const time = localStorage.getItem("token_time");
-
-    if (token && time) {
-        const expired = Date.now() - parseInt(time) > 7 * 24 * 60 * 60 * 1000;
-        if (expired) {
-            Auth.logout();
-        } else {
-            Auth.syncProfile();
-        }
-    }
+    if (token) Auth.syncProfile();
 });
 
+// Dynamic Mouse Glow (Desktop only)
 document.addEventListener('mousemove', (e) => {
     const glow = document.getElementById('glow');
-    if (glow) {
-        glow.style.left = e.pageX + 'px';
-        glow.style.top = e.pageY + 'px';
+    if (glow && window.matchMedia("(pointer: fine)").matches) {
+        glow.style.left = e.clientX + 'px';
+        glow.style.top = e.clientY + 'px';
     }
 });
 </script>
