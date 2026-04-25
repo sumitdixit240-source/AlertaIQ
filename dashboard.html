@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Core.AI | Premium Backend Node Manager</title>
+    <title>AlertaiQ | Smart Node Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -60,6 +60,12 @@
         .horizontal-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
         .horizontal-scroll::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
 
+        .modal-scroll-area {
+            max-height: 70vh;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 20px; border: 2px solid transparent; background-clip: content-box; }
@@ -67,6 +73,9 @@
 
         .flashing-green { animation: pulse-green 1.5s infinite; }
         @keyframes pulse-green { 0%, 100% { color: #4ade80; } 50% { color: #22c55e; } }
+
+        .flashing-red { animation: pulse-red 1s infinite; color: #ef4444; }
+        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
 
         .loader-ring {
             border: 4px solid rgba(99, 102, 241, 0.1);
@@ -109,23 +118,28 @@
     <!-- Loading Overlay -->
     <div id="global-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[200] flex flex-col items-center justify-center transition-opacity duration-500 opacity-0 pointer-events-none">
         <div class="loader-ring mb-4"></div>
-        <p id="overlay-text" class="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Syncing with Mainframe...</p>
+        <p id="overlay-text" class="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Syncing with AlertaiQ...</p>
     </div>
 
     <!-- Header -->
     <header class="glass m-4 md:m-6 rounded-[2.5rem] p-5 flex justify-between items-center z-50">
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                <i class="fa-solid fa-microchip text-xl text-white"></i>
+                <i class="fa-solid fa-bell text-xl text-white"></i>
             </div>
             <div>
-                <h2 class="text-xl font-black tracking-tighter">Core.AI</h2>
-                <p id="user-display" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Unified Node Control</p>
+                <h2 class="text-xl font-black tracking-tighter">AlertaiQ</h2>
+                <p id="user-display" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Global Monitoring System</p>
             </div>
         </div>
-        <button onclick="triggerLogout()" class="px-5 py-3 rounded-xl bg-slate-900/50 border border-slate-700/50 text-slate-400 hover:text-red-400 transition-all text-[10px] font-black uppercase tracking-widest">
-            <i class="fa-solid fa-power-off"></i>
-        </button>
+        <div class="flex items-center gap-3">
+            <div id="premium-badge" class="hidden px-4 py-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[8px] font-black uppercase tracking-widest">
+                <i class="fa-solid fa-crown mr-1"></i> Premium
+            </div>
+            <button onclick="triggerLogout()" class="px-5 py-3 rounded-xl bg-slate-900/50 border border-slate-700/50 text-slate-400 hover:text-red-400 transition-all text-[10px] font-black uppercase tracking-widest">
+                <i class="fa-solid fa-power-off"></i>
+            </button>
+        </div>
     </header>
 
     <main class="main-viewport px-4 md:px-8 space-y-8">
@@ -133,26 +147,26 @@
         <!-- Stats -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
             <div class="glass p-6 rounded-[2rem] border-l-4 border-l-indigo-500">
-                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Clusters</p>
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Alerts</p>
                 <h3 id="stat-count" class="text-3xl font-black mt-1 text-white">0</h3>
             </div>
             <div class="glass p-6 rounded-[2rem]">
-                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Global Allocation</p>
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Total Threshold</p>
                 <h3 id="stat-capital" class="text-3xl font-black mt-1 text-indigo-400">₹0</h3>
             </div>
             <div class="glass p-6 rounded-[2rem] flex items-center justify-between">
                 <div>
-                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Network Status</p>
-                    <h3 class="text-xl font-black mt-1 text-emerald-500 italic">SECURE</h3>
+                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">System Health</p>
+                    <h3 class="text-xl font-black mt-1 text-emerald-500 italic">NOMINAL</h3>
                 </div>
-                <i class="fa-solid fa-shield-halved text-emerald-500 text-2xl"></i>
+                <i class="fa-solid fa-microchip text-emerald-500 text-2xl"></i>
             </div>
         </div>
 
         <!-- Deployment Sectors -->
         <section class="max-w-7xl mx-auto">
             <div class="flex items-center gap-4 mb-4">
-                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Deploy Sector</h3>
+                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Operational Sectors</h3>
                 <div class="h-px flex-grow bg-white/5"></div>
             </div>
             <div id="category-grid" class="horizontal-scroll"></div>
@@ -161,7 +175,7 @@
         <!-- Active Clusters -->
         <section class="max-w-7xl mx-auto space-y-6">
             <div class="flex items-center gap-4">
-                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Operational Clusters</h3>
+                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Active Alert Logs</h3>
                 <div class="h-px flex-grow bg-white/5"></div>
             </div>
             <div id="entity-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
@@ -172,84 +186,127 @@
     <div id="modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-[150] hidden flex items-center justify-center p-4">
         <div class="glass w-full max-w-lg rounded-[3rem] overflow-hidden flex flex-col shadow-2xl">
             <div class="p-8 border-b border-white/5 bg-gradient-to-r from-indigo-600/10 to-transparent flex justify-between items-center">
-                <h3 id="modal-sector-title" class="text-2xl font-black tracking-tighter text-white">Initialize Node</h3>
+                <h3 id="modal-sector-title" class="text-2xl font-black tracking-tighter text-white">Initialize Alert</h3>
                 <button onclick="closeModal()" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
                     <i class="fa-solid fa-xmark text-white"></i>
                 </button>
             </div>
-            <form id="entity-form" class="p-8 space-y-6">
-                <div class="space-y-3">
-                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Provider Title</label>
-                    <select id="title" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none focus:border-indigo-500"></select>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
+            
+            <div class="modal-scroll-area p-8">
+                <form id="entity-form" class="space-y-6">
                     <div class="space-y-3">
-                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Cycle Frequency</label>
-                        <select id="frequency" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
-                            <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                            <option value="yearly">Yearly</option>
-                        </select>
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Target Provider</label>
+                        <select id="title" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none focus:border-indigo-500"></select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-3">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Cycle Frequency</label>
+                            <select id="frequency" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
+                                <option value="once">Once</option>
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
+                        <div class="space-y-3">
+                            <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Alert Value (₹)</label>
+                            <input type="number" id="amount" required placeholder="0" class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-emerald-400 outline-none">
+                        </div>
                     </div>
                     <div class="space-y-3">
-                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount (₹)</label>
-                        <input type="number" id="amount" required placeholder="0" class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-emerald-400 outline-none">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Trigger Date</label>
+                        <input type="date" id="expiryDate" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
                     </div>
-                </div>
-                <div class="space-y-3">
-                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Renewal Date</label>
-                    <input type="date" id="expiryDate" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
-                </div>
-                <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-xl text-[11px] font-black uppercase tracking-[0.3em] text-white transition-all active:scale-95">
-                    Deploy to Cloud
-                </button>
-            </form>
+                    
+                    <div class="pt-4">
+                        <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-xl text-[11px] font-black uppercase tracking-[0.3em] text-white transition-all active:scale-95">
+                            Confirm Configuration
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Premium Modal -->
+    <div id="premium-modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-[160] hidden flex items-center justify-center p-4">
+        <div class="glass w-full max-w-sm rounded-[3rem] overflow-hidden p-10 text-center flex flex-col items-center gap-6 shadow-2xl border-amber-500/20">
+            <div class="w-20 h-20 bg-amber-500 rounded-3xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+                <i class="fa-solid fa-crown text-3xl text-white"></i>
+            </div>
+            <div>
+                <h3 class="text-2xl font-black tracking-tighter text-white">Premium Access</h3>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 px-4">You've reached the free tier limit of 2 alert nodes.</p>
+            </div>
+            <div class="w-full py-6 bg-slate-900/50 rounded-2xl border border-white/5">
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Lifetime Upgrade</p>
+                <p class="text-4xl font-black text-white">₹1</p>
+            </div>
+            <button onclick="simulatePayment()" class="w-full bg-amber-500 hover:bg-amber-400 py-5 rounded-xl text-[11px] font-black uppercase tracking-[0.3em] text-white transition-all active:scale-95 shadow-lg shadow-amber-500/10">
+                Activate Premium
+            </button>
+            <button onclick="closePremiumModal()" class="text-[10px] font-black text-slate-600 uppercase tracking-widest hover:text-slate-400 transition-colors">
+                Maybe Later
+            </button>
         </div>
     </div>
 
     <script type="module">
-        // ==========================================
-        // 1. API CONFIG (FIXED FOR BACKEND ROUTES)
-        // ==========================================
-        const BASE = "https://alertaiq.onrender.com/api/nodes"; // Mount point
+        const BASE = "https://alertaiq.onrender.com/api/nodes"; 
         
         function getToken() {
             return localStorage.getItem("token");
         }
 
-        // ==========================================
-        // 2. GLOBAL STATE & DICTIONARY
-        // ==========================================
+        // New Logic: Premium State
+        function isUserPremium() {
+            return localStorage.getItem("isPremium") === "true";
+        }
+
         let activeNodes = [];
         let selectedCategory = null;
+        let timerInterval = null;
 
         const SECTORS = [
             { id: "saas", name: "SaaS", icon: "fa-cloud", services: ["Adobe", "Slack", "Zoom", "Office 365", "Figma", "Canva", "Notion", "Dropbox", "ChatGPT Plus", "Midjourney"] },
             { id: "dev", name: "Build", icon: "fa-code", services: ["Vercel", "GitHub", "AWS", "DigitalOcean", "Supabase", "MongoDB", "Postman", "Cloudflare", "Clerk"] },
             { id: "fin", name: "Finance", icon: "fa-wallet", services: ["Stripe", "PayPal", "Amex", "HDFC", "SBI", "Robinhood", "Zerodha", "Groww", "ICICI Bank"] },
             { id: "stream", name: "Media", icon: "fa-film", services: ["Netflix", "Spotify", "Apple TV", "Prime Video", "Hulu", "Disney+", "YouTube Premium", "Crunchyroll"] },
-            { id: "util", name: "Utility", icon: "fa-bolt", services: ["Electric", "Water", "Gas", "WiFi", "Broadband", "Airtel", "Jio", "Rent", "Gym"] }
+            { id: "util", name: "Utility", icon: "fa-bolt", services: ["Electric", "Water", "Gas", "WiFi", "Broadband", "Airtel", "Jio", "Rent", "Gym"] },
+            { id: "logistics", name: "Logistics", icon: "fa-truck-fast", services: ["FedEx", "BlueDart", "Delhivery", "DHL", "Amazon Shipping"] },
+            { id: "hr", name: "HR Relations", icon: "fa-users-gear", services: ["LinkedIn", "BambooHR", "Workday", "Gusto", "Indeed"] },
+            { id: "energy", name: "Energy Grid", icon: "fa-plug-circle-bolt", services: ["Solar Monitoring", "Grid Power", "Battery Backup", "EV Station"] },
+            { id: "research", name: "R&D Labs", icon: "fa-flask-vial", services: ["OpenAI API", "HuggingFace", "Google Cloud AI", "Anthropic", "DeepMind"] }
         ];
 
-        // ==========================================
-        // 3. CLOUD OPERATIONS (STRICT RESPONSE DATA HANDLING)
-        // ==========================================
-        
+        function getCountdown(targetDate) {
+            const now = new Date().getTime();
+            const distance = new Date(targetDate).getTime() - now;
+            if (distance < 0) return { text: "EXPIRED", isCritical: true };
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            return {
+                text: `${days.toString().padStart(2, '0')}:${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`,
+                isCritical: days < 1
+            };
+        }
+
         async function syncNodes() {
             try {
                 const res = await fetch(`${BASE}`, {
                     method: "GET",
                     headers: { "Authorization": `Bearer ${getToken()}` }
                 });
-                
                 const responseData = await res.json();
-                
                 if (res.ok) {
-                    // FIX: Backend returns { success: true, data: [...] }
                     activeNodes = responseData.data || [];
                     renderUI();
+                    startGlobalTimer();
+                    updatePremiumUI();
                 } else if (res.status === 401) {
-                    triggerLogout();
+                    forceLogout();
                 }
             } catch (err) {
                 console.error("Fetch Nodes Error:", err);
@@ -257,8 +314,36 @@
             }
         }
 
+        function updatePremiumUI() {
+            const badge = document.getElementById('premium-badge');
+            if (isUserPremium()) {
+                badge.classList.remove('hidden');
+            }
+        }
+
+        function startGlobalTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                activeNodes.forEach(node => {
+                    const nodeId = node._id || node.id;
+                    const el = document.getElementById(`timer-${nodeId}`);
+                    if (el) {
+                        const countdown = getCountdown(node.expiryDate);
+                        el.innerText = countdown.text;
+                        if (countdown.isCritical) {
+                            el.classList.add('flashing-red');
+                            el.classList.remove('text-indigo-500');
+                        } else {
+                            el.classList.remove('flashing-red');
+                            el.classList.add('text-indigo-500');
+                        }
+                    }
+                });
+            }, 1000);
+        }
+
         async function pushNodeToCloud(node) {
-            showOverlay("Creating Cluster...");
+            showOverlay("Initializing Alert...");
             try {
                 const res = await fetch(`${BASE}`, {
                     method: "POST",
@@ -268,14 +353,11 @@
                     },
                     body: JSON.stringify(node)
                 });
-                
                 const responseData = await res.json();
-                
                 if (res.ok) {
                     await syncNodes(); 
                     return responseData.data;
                 } else {
-                    // Handle specific error messages from your backend
                     showError(responseData.error || "Failed to create node");
                     return null;
                 }
@@ -288,13 +370,12 @@
         }
 
         async function deleteNodeFromCloud(id) {
-            showOverlay("Terminating Cluster...");
+            showOverlay("Purging Alert Log...");
             try {
                 const res = await fetch(`${BASE}/${id}`, {
                     method: "DELETE",
                     headers: { "Authorization": `Bearer ${getToken()}` }
                 });
-                
                 if (res.ok) {
                     await syncNodes();
                 } else {
@@ -308,30 +389,23 @@
             }
         }
 
-        // ==========================================
-        // 4. UI RENDERING
-        // ==========================================
         function renderUI() {
             const list = document.getElementById('entity-list');
             list.innerHTML = '';
             let total = 0;
-
             if (activeNodes.length === 0) {
-                list.innerHTML = `<div class="col-span-full py-20 text-center opacity-30 font-black tracking-widest text-xs uppercase">No Nodes Detected In This Sector</div>`;
+                list.innerHTML = `<div class="col-span-full py-20 text-center opacity-30 font-black tracking-widest text-xs uppercase">No Active Alerts Monitoring...</div>`;
             }
-
             activeNodes.forEach(node => {
                 total += Number(node.amount || 0);
                 const card = document.createElement('div');
                 card.className = "glass p-8 rounded-[2.5rem] relative overflow-hidden group border border-white/5 hover:border-indigo-500/30 transition-all";
-                
-                // Flexible ID handling (MongoDB _id)
                 const nodeId = node._id || node.id;
-
+                const countdown = getCountdown(node.expiryDate);
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-6">
                         <div>
-                            <p class="text-[8px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">${node.category || 'Node'}</p>
+                            <p class="text-[8px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">${node.category || 'Alert'}</p>
                             <h4 class="text-xl font-black text-white">${node.title}</h4>
                         </div>
                         <button onclick="handleDelete('${nodeId}')" class="w-10 h-10 rounded-xl bg-red-500/5 text-red-500/30 hover:bg-red-500 hover:text-white transition-all">
@@ -345,62 +419,62 @@
                                 <i class="fa-solid fa-repeat text-slate-500 text-[10px]"></i>
                                 <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${node.frequency || 'Monthly'}</span>
                             </div>
+                            <span class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Frequency</span>
                         </div>
                         <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-white/5">
                             <div class="flex items-center gap-2">
-                                <i class="fa-solid fa-calendar-day text-indigo-500 text-[10px]"></i>
-                                <span class="text-[10px] font-mono font-bold text-slate-300">${new Date(node.expiryDate).toLocaleDateString()}</span>
+                                <i class="fa-solid fa-clock text-indigo-500 text-[10px]"></i>
+                                <span id="timer-${nodeId}" class="text-[14px] font-mono font-black tracking-tighter ${countdown.isCritical ? 'flashing-red' : 'text-indigo-500'}">
+                                    ${countdown.text}
+                                </span>
                             </div>
-                            <span class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Active Node</span>
+                            <span class="text-[8px] font-black text-slate-500 uppercase tracking-widest">DD:HH:MM:SS</span>
                         </div>
                     </div>
                 `;
                 list.appendChild(card);
             });
-
             document.getElementById('stat-count').innerText = activeNodes.length;
             document.getElementById('stat-capital').innerText = `₹${total.toLocaleString()}`;
         }
 
-        function renderCategories() {
-            const grid = document.getElementById('category-grid');
-            grid.innerHTML = '';
-            SECTORS.forEach(s => {
-                const card = document.createElement('div');
-                card.className = "sector-card glass p-6 rounded-[1.8rem] flex flex-col items-center gap-3 transition-all hover:bg-indigo-600/10 cursor-pointer group active:scale-95";
-                card.onclick = () => openModal(s);
-                card.innerHTML = `
-                    <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-                        <i class="fa-solid ${s.icon} text-lg"></i>
-                    </div>
-                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-indigo-300 text-center">${s.name}</span>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        // ==========================================
-        // 5. INTERACTION HANDLERS
-        // ==========================================
         window.openModal = (sector) => {
+            // Quota Gate logic
+            if (activeNodes.length >= 2 && !isUserPremium()) {
+                document.getElementById('premium-modal').classList.remove('hidden');
+                return;
+            }
+
             selectedCategory = sector;
-            document.getElementById('modal-sector-title').innerText = `Deploy ${sector.name}`;
+            document.getElementById('modal-sector-title').innerText = `Configure ${sector.name}`;
             const sub = document.getElementById('title');
             sub.innerHTML = sector.services.map(s => `<option value="${s}">${s}</option>`).join('');
             document.getElementById('modal').classList.remove('hidden');
         };
 
         window.closeModal = () => document.getElementById('modal').classList.add('hidden');
+        window.closePremiumModal = () => document.getElementById('premium-modal').classList.add('hidden');
+
+        // New Logic: Mock Payment
+        window.simulatePayment = () => {
+            showOverlay("Processing Transaction...");
+            setTimeout(() => {
+                localStorage.setItem("isPremium", "true");
+                hideOverlay();
+                closePremiumModal();
+                updatePremiumUI();
+                showError("Premium Activated Successfully!");
+            }, 2000);
+        };
         
         window.handleDelete = async (id) => {
-            if (confirm("Terminate cluster node?")) {
+            if (confirm("Permanently remove this alert log?")) {
                 await deleteNodeFromCloud(id);
             }
         };
 
         document.getElementById('entity-form').onsubmit = async (e) => {
             e.preventDefault();
-            // Sending keys that match your backend's primary verification
             const node = {
                 title: document.getElementById('title').value,
                 category: selectedCategory.name,
@@ -413,9 +487,15 @@
         };
 
         window.triggerLogout = () => {
-            localStorage.removeItem("token");
-            window.location.href = "index.html"; 
+            if (confirm("Are you sure you want to exit AlertaiQ?")) {
+                forceLogout();
+            }
         };
+
+        function forceLogout() {
+            localStorage.removeItem("token");
+            window.location.href = "login.html"; 
+        }
 
         function showError(msg) {
             const toast = document.getElementById('error-toast');
@@ -437,24 +517,18 @@
             overlay.classList.add('pointer-events-none');
         }
 
-        // ==========================================
-        // 6. INITIALIZATION
-        // ==========================================
         function init3D() {
             const canvas = document.getElementById('bg-canvas');
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
             const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            
             const stars = new THREE.BufferGeometry();
             const pos = new Float32Array(3000);
             for(let i=0; i<3000; i++) pos[i] = (Math.random() - 0.5) * 50;
             stars.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            const starMat = new THREE.PointsMaterial({ size: 0.04, color: 0x6366f1, transparent: true, opacity: 0.4 });
-            const starPoints = new THREE.Points(stars, starMat);
+            const starPoints = new THREE.Points(stars, new THREE.PointsMaterial({ size: 0.04, color: 0x6366f1, transparent: true, opacity: 0.4 }));
             scene.add(starPoints);
-            
             camera.position.z = 5;
             function animate() {
                 requestAnimationFrame(animate);
@@ -471,7 +545,23 @@
 
         window.addEventListener('load', () => {
             init3D();
-            renderCategories();
+            
+            // Render sectors
+            const grid = document.getElementById('category-grid');
+            grid.innerHTML = '';
+            SECTORS.forEach(s => {
+                const card = document.createElement('div');
+                card.className = "sector-card glass p-6 rounded-[1.8rem] flex flex-col items-center gap-3 transition-all hover:bg-indigo-600/10 cursor-pointer group active:scale-95";
+                card.onclick = () => openModal(s);
+                card.innerHTML = `
+                    <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid ${s.icon} text-lg"></i>
+                    </div>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-indigo-300 text-center">${s.name}</span>
+                `;
+                grid.appendChild(card);
+            });
+
             syncNodes();
         });
     </script>
