@@ -4,50 +4,49 @@ const sendMail = require("./mailer");
 
 // ================= INTERVAL MAPPING =================
 const getIntervalMs = (freq) => {
-  switch (freq) {
-    case "daily":
-      return 24 * 60 * 60 * 1000;
-    case "weekly":
-      return 7 * 24 * 60 * 60 * 1000;
-    case "monthly":
-      return 30 * 24 * 60 * 60 * 1000;
-    case "one-time":
-      return null;
-    default:
-      return null;
-  }
+  const map = {
+    daily: 24 * 60 * 60 * 1000,
+    weekly: 7 * 24 * 60 * 60 * 1000,
+    monthly: 30 * 24 * 60 * 60 * 1000,
+    "one-time": null,
+  };
+  return map[freq] || null;
 };
 
 // ================= CRON JOB =================
-// Runs every minute
+// runs every minute
 cron.schedule("* * * * *", async () => {
-  console.log("⏱ Cron running...");
+  console.log(`⏱ Cron started at ${new Date().toISOString()}`);
 
   const now = Date.now();
 
   try {
-    const alerts = await Alert.find({});
+    // ❗ Only fetch required fields (performance improvement)
+    const alerts = await Alert.find(
+      {},
+      "email title category amount frequency expiryDate lastSent reminderSent"
+    );
 
     for (const alert of alerts) {
       try {
-        if (!alert.expiryDate) continue;
+        if (!alert.expiryDate || !alert.email) continue;
 
         const expiryTime = new Date(alert.expiryDate).getTime();
         if (Number.isNaN(expiryTime)) continue;
 
         const diff = expiryTime - now;
 
-        // ❌ already expired
+        // ❌ already expired → skip
         if (diff <= 0) continue;
 
-        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const days = Math.floor(diff / (86400000));
+        const hours = Math.floor((diff % 86400000) / 3600000);
 
         // ================= ONE-TIME ALERT =================
         if (alert.frequency === "one-time") {
-          const threshold = 3 * 24 * 60 * 60 * 1000;
+          const reminderWindow = 3 * 86400000; // 3 days
 
-          if (diff <= threshold && !alert.reminderSent) {
+          if (diff <= reminderWindow && !alert.reminderSent) {
             await sendMail(
               alert.email,
               "⚠️ Renewal Reminder",
@@ -64,7 +63,7 @@ cron.schedule("* * * * *", async () => {
             alert.lastSent = new Date();
             await alert.save();
 
-            console.log(`📩 One-time reminder sent → ${alert.email}`);
+            console.log(`📩 One-time alert sent → ${alert.email}`);
           }
 
           continue;
@@ -78,7 +77,9 @@ cron.schedule("* * * * *", async () => {
           ? new Date(alert.lastSent).getTime()
           : 0;
 
-        if (now - lastSentTime >= interval) {
+        const shouldSend = now - lastSentTime >= interval;
+
+        if (shouldSend) {
           await sendMail(
             alert.email,
             "⏳ Renewal Alert",
@@ -99,11 +100,13 @@ cron.schedule("* * * * *", async () => {
         }
 
       } catch (err) {
-        console.error("⚠️ Alert processing error:", err.message);
+        console.error(`⚠️ Alert error (${alert._id}):`, err.message);
       }
     }
 
+    console.log("✅ Cron cycle completed");
+
   } catch (err) {
-    console.error("❌ Cron error:", err.message);
+    console.error("❌ Cron job failed:", err.message);
   }
 });
