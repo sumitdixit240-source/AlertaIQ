@@ -101,7 +101,35 @@ router.post("/send-otp", async (req, res) => {
     await OTP.deleteMany({ email });
     await OTP.create({ email, otp });
 
-    await sendMail(email, "Core.AI OTP", `<h2>OTP: ${otp}</h2>`);
+    await sendMail(
+  email,
+  "AlertAIQ OTP Verification",
+  `
+  <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+    
+    <h2 style="color:#4F46E5;">🔐 AlertAIQ OTP Verification</h2>
+    
+    <p>
+      Your AlertAIQ OTP is shown below. Use this One-Time Password to securely complete your verification process. 
+      This code helps protect your account and ensures that only you can access your services. 
+      Please enter it promptly before it expires.
+    </p>
+
+    <h1 style="letter-spacing:3px; color:#111;">${otp}</h1>
+
+    <ul>
+      <li>Valid for 5 minutes only</li>
+      <li>Never share this OTP with anyone</li>
+      <li>Ignore this email if not requested</li>
+    </ul>
+
+    <p style="font-size:12px; color:#777;">
+      © AlertAIQ — Smart Alerts & Notifications
+    </p>
+
+  </div>
+  `
+);
 
     return res.json({
       success: true,
