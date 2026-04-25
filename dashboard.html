@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AlertaiQ | Cross-Platform Neural Manager</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Core.AI | Premium Backend Node Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -13,18 +13,11 @@
         :root {
             --accent: #6366f1;
             --accent-glow: rgba(99, 102, 241, 0.3);
-            --bg-dark: #020617;
-        }
-
-        /* Prevent overscroll bounce on mobile */
-        html, body {
-            overscroll-behavior-y: contain;
-            background-color: var(--bg-dark);
-            -webkit-tap-highlight-color: transparent;
         }
 
         body { 
             font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #020617;
             color: #f8fafc;
             height: 100vh;
             margin: 0;
@@ -38,445 +31,376 @@
             top: 0; left: 0;
             width: 100%; height: 100%;
             z-index: -1;
-            opacity: 0.5;
+            opacity: 0.6;
         }
 
         .glass {
             background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(16px) saturate(180%);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        /* Responsive Viewport Management */
         .main-viewport {
             flex: 1;
             overflow-y: auto;
-            overflow-x: hidden;
-            padding-bottom: env(safe-area-inset-bottom, 20px);
+            padding-bottom: 100px;
             scrollbar-gutter: stable;
         }
 
-        /* Mobile-Optimized Scrolling Sectors */
         .horizontal-scroll {
             display: flex;
             overflow-x: auto;
-            gap: 0.75rem;
-            padding: 0.5rem 0.25rem 1.25rem;
-            scrollbar-width: none; /* Hide for clean mobile look */
+            gap: 1rem;
+            padding-bottom: 1rem;
+            scrollbar-width: thin;
             -webkit-overflow-scrolling: touch;
         }
-        .horizontal-scroll::-webkit-scrollbar { display: none; }
 
-        /* Responsive Modal */
-        .modal-container {
-            width: 95%;
-            max-width: 500px;
-            margin: auto;
-            max-height: 90vh;
-            display: flex;
-            flex-direction: column;
-        }
+        .horizontal-scroll::-webkit-scrollbar { height: 4px; }
+        .horizontal-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        .horizontal-scroll::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
 
-        .modal-scroll-area {
-            overflow-y: auto;
-            padding-right: 4px;
-        }
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 20px; border: 2px solid transparent; background-clip: content-box; }
+        ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
 
-        /* Animations & FX */
-        .flashing-green { animation: pulse-green 2s infinite; }
+        .flashing-green { animation: pulse-green 1.5s infinite; }
         @keyframes pulse-green { 0%, 100% { color: #4ade80; } 50% { color: #22c55e; } }
 
-        .flashing-red { animation: pulse-red 1.2s infinite; color: #ef4444; }
-        @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
         .loader-ring {
-            border: 3px solid rgba(99, 102, 241, 0.1);
+            border: 4px solid rgba(99, 102, 241, 0.1);
             border-left-color: #6366f1;
             border-radius: 50%;
-            width: 40px; height: 40px;
-            animation: spin 0.8s linear infinite;
+            width: 45px; height: 45px;
+            animation: spin 1s linear infinite;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Smooth Card Hover for Desktop, simple for mobile */
-        @media (hover: hover) {
-            .interactive-card:hover {
-                transform: translateY(-4px);
-                border-color: var(--accent);
-                box-shadow: 0 15px 30px -10px rgba(99, 102, 241, 0.2);
-            }
-        }
-        
-        .interactive-card:active {
-            transform: scale(0.98);
+        .sector-card {
+            min-width: 130px;
+            flex-shrink: 0;
         }
 
-        /* Safe area spacing for modern phones */
-        header {
-            padding-top: max(1.25rem, env(safe-area-inset-top));
-        }
-
-        /* Premium Ad Shine Effect */
-        .premium-shine {
-            position: relative;
-            overflow: hidden;
-        }
-        .premium-shine::after {
-            content: "";
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(
-                45deg,
-                transparent 25%,
-                rgba(255, 255, 255, 0.15) 50%,
-                transparent 75%
-            );
-            animation: shine-sweep 6s infinite linear;
-        }
-        @keyframes shine-sweep {
-            0% { transform: translateX(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) rotate(45deg); }
+        .error-toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #ef4444;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            z-index: 300;
+            display: none;
+            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
         }
     </style>
 </head>
 <body class="antialiased">
 
     <canvas id="bg-canvas"></canvas>
+    <div id="error-toast" class="error-toast"></div>
 
-    <!-- Global Loading Overlay -->
-    <div id="global-overlay" class="fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[500] flex flex-col items-center justify-center transition-opacity duration-300 opacity-0 pointer-events-none">
-        <div class="loader-ring mb-6"></div>
-        <p id="overlay-text" class="text-[10px] font-bold uppercase tracking-[0.4em] text-indigo-400">Synchronizing Neural Net</p>
+    <!-- Loading Overlay -->
+    <div id="global-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[200] flex flex-col items-center justify-center transition-opacity duration-500 opacity-0 pointer-events-none">
+        <div class="loader-ring mb-4"></div>
+        <p id="overlay-text" class="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Syncing with Mainframe...</p>
     </div>
 
-    <!-- Persistent Header -->
-    <header class="glass m-3 md:m-6 rounded-3xl md:rounded-[2.5rem] p-4 md:p-5 flex justify-between items-center z-[100]">
-        <div class="flex items-center gap-3 md:gap-4">
-            <div class="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-xl md:rounded-2xl flex items-center justify-center shadow-lg">
-                <i class="fa-solid fa-bell text-lg md:text-xl text-white"></i>
+    <!-- Header -->
+    <header class="glass m-4 md:m-6 rounded-[2.5rem] p-5 flex justify-between items-center z-50">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <i class="fa-solid fa-microchip text-xl text-white"></i>
             </div>
-            <div class="min-w-0">
-                <h2 class="text-lg md:text-xl font-black tracking-tighter truncate">AlertaiQ</h2>
-                <p class="text-[8px] md:text-[9px] font-bold text-slate-500 uppercase tracking-widest truncate">Tactical Terminal</p>
+            <div>
+                <h2 class="text-xl font-black tracking-tighter">Core.AI</h2>
+                <p id="user-display" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Unified Node Control</p>
             </div>
         </div>
-        
-        <div class="flex items-center gap-2 md:gap-3">
-            <div id="premium-badge" class="hidden px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[7px] md:text-[8px] font-black uppercase tracking-widest">
-                <i class="fa-solid fa-crown mr-1"></i>
-            </div>
-            <button onclick="triggerLogout()" class="p-3 md:px-5 md:py-3 rounded-xl bg-slate-900/50 border border-slate-700/50 text-slate-400 hover:text-red-400 transition-all text-[10px] font-black uppercase">
-                <i class="fa-solid fa-power-off"></i>
-            </button>
-        </div>
+        <button onclick="triggerLogout()" class="px-5 py-3 rounded-xl bg-slate-900/50 border border-slate-700/50 text-slate-400 hover:text-red-400 transition-all text-[10px] font-black uppercase tracking-widest">
+            <i class="fa-solid fa-power-off"></i>
+        </button>
     </header>
 
-    <main class="main-viewport px-4 md:px-8 space-y-6 md:space-y-8">
+    <main class="main-viewport px-4 md:px-8 space-y-8">
         
-        <!-- Tactical Overview (Stats) -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 max-w-7xl mx-auto">
-            <div class="glass p-5 md:p-6 rounded-3xl border-l-4 border-l-indigo-500">
-                <p class="text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Nodes</p>
-                <h3 id="stat-count" class="text-2xl md:text-3xl font-black mt-1 text-white">0</h3>
+        <!-- Stats -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
+            <div class="glass p-6 rounded-[2rem] border-l-4 border-l-indigo-500">
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Clusters</p>
+                <h3 id="stat-count" class="text-3xl font-black mt-1 text-white">0</h3>
             </div>
-            <div class="glass p-5 md:p-6 rounded-3xl">
-                <p class="text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest">Aggregate Exposure</p>
-                <h3 id="stat-capital" class="text-2xl md:text-3xl font-black mt-1 text-indigo-400">₹0</h3>
+            <div class="glass p-6 rounded-[2rem]">
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Global Allocation</p>
+                <h3 id="stat-capital" class="text-3xl font-black mt-1 text-indigo-400">₹0</h3>
             </div>
-            <div class="glass p-5 md:p-6 rounded-3xl flex items-center justify-between sm:col-span-2 lg:col-span-1">
+            <div class="glass p-6 rounded-[2rem] flex items-center justify-between">
                 <div>
-                    <p class="text-[8px] md:text-[9px] font-black text-slate-500 uppercase tracking-widest">Uplink Status</p>
-                    <h3 class="text-lg md:text-xl font-black mt-1 text-emerald-500">NOMINAL</h3>
+                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Network Status</p>
+                    <h3 class="text-xl font-black mt-1 text-emerald-500 italic">SECURE</h3>
                 </div>
-                <div class="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                    <div class="w-2 h-2 rounded-full bg-emerald-500 flashing-green"></div>
-                </div>
+                <i class="fa-solid fa-shield-halved text-emerald-500 text-2xl"></i>
             </div>
         </div>
 
-        <!-- Deployment Sectors (Horizontal Scroll) -->
+        <!-- Deployment Sectors -->
         <section class="max-w-7xl mx-auto">
-            <div class="flex items-center gap-4 mb-3 md:mb-4 px-1">
-                <h3 class="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Deployment Sectors</h3>
+            <div class="flex items-center gap-4 mb-4">
+                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Deploy Sector</h3>
                 <div class="h-px flex-grow bg-white/5"></div>
             </div>
-            <div id="category-grid" class="horizontal-scroll">
-                <!-- JS Populated -->
-            </div>
+            <div id="category-grid" class="horizontal-scroll"></div>
         </section>
 
-        <!-- Active Registry (Responsive Grid) -->
-        <section class="max-w-7xl mx-auto space-y-4 md:space-y-6">
-            <div class="flex items-center gap-4 px-1">
-                <h3 class="text-[9px] md:text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Registry</h3>
+        <!-- Active Clusters -->
+        <section class="max-w-7xl mx-auto space-y-6">
+            <div class="flex items-center gap-4">
+                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Operational Clusters</h3>
                 <div class="h-px flex-grow bg-white/5"></div>
             </div>
-            <div id="entity-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                <!-- JS Populated -->
-            </div>
-        </section>
-
-        <!-- LARGE ADVANCED VERSION UPGRADE AD -->
-        <section class="max-w-7xl mx-auto pb-12">
-            <div class="glass p-8 md:p-12 rounded-[3rem] bg-gradient-to-br from-indigo-950/50 via-slate-900/90 to-blue-950/50 border-2 border-indigo-500/20 premium-shine text-center md:text-left">
-                <div class="flex flex-col md:flex-row items-center gap-8 md:gap-12">
-                    <div class="flex-shrink-0 w-20 h-20 md:w-32 md:h-32 bg-indigo-600 rounded-[2rem] flex items-center justify-center shadow-[0_0_50px_rgba(99,102,241,0.3)]">
-                        <i class="fa-solid fa-rocket text-4xl md:text-6xl text-white"></i>
-                    </div>
-                    <div class="flex-grow space-y-4">
-                        <span class="px-4 py-1.5 rounded-full bg-indigo-500/10 text-indigo-400 text-[10px] font-black uppercase tracking-[0.3em] border border-indigo-500/20">Operational Evolution</span>
-                        <h2 class="text-3xl md:text-5xl font-black text-white tracking-tighter">Upgrade to <span class="text-indigo-400">Advanced View</span></h2>
-                        <p class="text-slate-400 text-sm md:text-lg max-w-2xl font-medium leading-relaxed">
-                            Unlock the full potential of your tactical terminal. Gain access to the Neural Messaging Hub, priority cluster nodes, and unlimited service integration. Evolve beyond standard limits.
-                        </p>
-                        <div class="flex flex-wrap justify-center md:justify-start gap-4 md:gap-8 pt-2">
-                            <div class="flex items-center gap-2">
-                                <i class="fa-solid fa-shield-halved text-emerald-500"></i>
-                                <span class="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Unlimited Nodes</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <i class="fa-solid fa-comment-dots text-emerald-500"></i>
-                                <span class="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Neural Messages</span>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <i class="fa-solid fa-bolt-lightning text-emerald-500"></i>
-                                <span class="text-[9px] font-bold text-slate-300 uppercase tracking-widest">Instant Sync</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="w-full md:w-auto flex flex-col items-center md:items-end gap-5">
-                        <div class="text-center md:text-right">
-                            <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1">Lifetime Activation</p>
-                            <p class="text-4xl font-black text-white">₹1<span class="text-xs text-slate-500 ml-1">ONLY</span></p>
-                        </div>
-                        <button onclick="bridgeToAdvanced()" class="w-full md:w-64 bg-indigo-600 hover:bg-indigo-500 py-6 rounded-2xl text-[12px] font-black uppercase tracking-[0.4em] text-white transition-all active:scale-95 shadow-[0_20px_50px_rgba(99,102,241,0.2)]">
-                            EVOLVE NOW <i class="fa-solid fa-arrow-right ml-2"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
+            <div id="entity-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
         </section>
     </main>
 
-    <!-- Unified Modal System -->
-    <div id="modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-[500] hidden flex items-center justify-center p-4">
-        <div class="glass modal-container rounded-[2.5rem] shadow-2xl overflow-hidden">
-            <div class="p-6 md:p-8 border-b border-white/5 bg-gradient-to-r from-indigo-600/10 to-transparent flex justify-between items-center">
-                <div>
-                    <h3 id="modal-sector-title" class="text-xl md:text-2xl font-black tracking-tighter text-white">Initialize Node</h3>
-                    <p class="text-[8px] font-bold text-indigo-400 uppercase tracking-widest mt-1">Operational Protocol</p>
-                </div>
-                <button onclick="closeModal()" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10">
+    <!-- Modal Form -->
+    <div id="modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-[150] hidden flex items-center justify-center p-4">
+        <div class="glass w-full max-w-lg rounded-[3rem] overflow-hidden flex flex-col shadow-2xl">
+            <div class="p-8 border-b border-white/5 bg-gradient-to-r from-indigo-600/10 to-transparent flex justify-between items-center">
+                <h3 id="modal-sector-title" class="text-2xl font-black tracking-tighter text-white">Initialize Node</h3>
+                <button onclick="closeModal()" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
                     <i class="fa-solid fa-xmark text-white"></i>
                 </button>
             </div>
-            
-            <div class="modal-scroll-area p-6 md:p-8">
-                <form id="entity-form" class="space-y-6">
-                    <div class="space-y-2">
-                        <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Select Target</label>
-                        <select id="title" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 font-bold text-slate-200 outline-none focus:border-indigo-500"></select>
+            <form id="entity-form" class="p-8 space-y-6">
+                <div class="space-y-3">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Provider Title</label>
+                    <select id="title" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none focus:border-indigo-500"></select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-3">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Cycle Frequency</label>
+                        <select id="frequency" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
                     </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div class="space-y-2">
-                            <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Cycle Type</label>
-                            <select id="frequency" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 font-bold text-slate-200 outline-none">
-                                <option value="once">Once</option>
-                                <option value="daily">Daily</option>
-                                <option value="weekly">Weekly</option>
-                                <option value="monthly">Monthly</option>
-                            </select>
-                        </div>
-                        <div class="space-y-2">
-                            <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Exposure (₹)</label>
-                            <input type="number" id="amount" required placeholder="0" class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 font-bold text-emerald-400 outline-none">
-                        </div>
+                    <div class="space-y-3">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount (₹)</label>
+                        <input type="number" id="amount" required placeholder="0" class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-emerald-400 outline-none">
                     </div>
-                    <div class="space-y-2">
-                        <label class="block text-[9px] font-black text-slate-500 uppercase tracking-widest">Trigger Horizon</label>
-                        <input type="date" id="expiryDate" required class="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-4 font-bold text-slate-200 outline-none">
-                    </div>
-                    
-                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-2xl text-[10px] font-black uppercase tracking-[0.3em] text-white transition-all active:scale-95 shadow-xl shadow-indigo-600/20">
-                        Authorize Deployment
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <div id="premium-modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-[600] hidden flex items-center justify-center p-4">
-        <div class="glass modal-container max-w-[360px] rounded-[2.5rem] p-8 text-center space-y-6">
-            <div class="w-16 h-16 bg-amber-500 rounded-2xl mx-auto flex items-center justify-center shadow-lg">
-                <i class="fa-solid fa-crown text-2xl text-white"></i>
-            </div>
-            <div>
-                <h3 class="text-xl font-black text-white">Elite Upgrade Required</h3>
-                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">Free tier limit reached (2 Nodes)</p>
-            </div>
-            <div class="py-4 bg-slate-900 rounded-2xl border border-white/5">
-                <p class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Lifetime Unrestricted Access</p>
-                <p class="text-3xl font-black text-white">₹1</p>
-            </div>
-            <button onclick="simulatePayment()" class="w-full bg-amber-500 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest text-white active:scale-95">
-                Execute Upgrade
-            </button>
-            <button onclick="closePremiumModal()" class="text-[9px] font-black text-slate-600 uppercase tracking-widest">Return to Dashboard</button>
+                </div>
+                <div class="space-y-3">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Renewal Date</label>
+                    <input type="date" id="expiryDate" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
+                </div>
+                <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-xl text-[11px] font-black uppercase tracking-[0.3em] text-white transition-all active:scale-95">
+                    Deploy to Cloud
+                </button>
+            </form>
         </div>
     </div>
 
     <script type="module">
-        const API_BASE = "https://alertaiq.onrender.com/api/nodes"; 
+        // ==========================================
+        // 1. API CONFIG (FIXED FOR BACKEND ROUTES)
+        // ==========================================
+        const BASE = "https://alertaiq.onrender.com/api/nodes"; // Mount point
         
-        // State Management
+        function getToken() {
+            return localStorage.getItem("token");
+        }
+
+        // ==========================================
+        // 2. GLOBAL STATE & DICTIONARY
+        // ==========================================
         let activeNodes = [];
         let selectedCategory = null;
-        let ticker = null;
 
         const SECTORS = [
-            { id: "saas", name: "SaaS", icon: "fa-cloud", services: ["Adobe", "Slack", "Zoom", "Office 365", "Figma", "Notion", "Dropbox", "ChatGPT Plus", "Midjourney"] },
+            { id: "saas", name: "SaaS", icon: "fa-cloud", services: ["Adobe", "Slack", "Zoom", "Office 365", "Figma", "Canva", "Notion", "Dropbox", "ChatGPT Plus", "Midjourney"] },
             { id: "dev", name: "Build", icon: "fa-code", services: ["Vercel", "GitHub", "AWS", "DigitalOcean", "Supabase", "MongoDB", "Postman", "Cloudflare", "Clerk"] },
             { id: "fin", name: "Finance", icon: "fa-wallet", services: ["Stripe", "PayPal", "Amex", "HDFC", "SBI", "Robinhood", "Zerodha", "Groww", "ICICI Bank"] },
             { id: "stream", name: "Media", icon: "fa-film", services: ["Netflix", "Spotify", "Apple TV", "Prime Video", "Hulu", "Disney+", "YouTube Premium", "Crunchyroll"] },
             { id: "util", name: "Utility", icon: "fa-bolt", services: ["Electric", "Water", "Gas", "WiFi", "Broadband", "Airtel", "Jio", "Rent", "Gym"] }
         ];
 
-        // Core App Logic
-        async function syncState() {
+        // ==========================================
+        // 3. CLOUD OPERATIONS (STRICT RESPONSE DATA HANDLING)
+        // ==========================================
+        
+        async function syncNodes() {
             try {
-                const res = await fetch(API_BASE, {
-                    headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
+                const res = await fetch(`${BASE}`, {
+                    method: "GET",
+                    headers: { "Authorization": `Bearer ${getToken()}` }
                 });
+                
+                const responseData = await res.json();
+                
                 if (res.ok) {
-                    const data = await res.json();
-                    activeNodes = data.data || [];
-                    renderRegistry();
-                    startTicker();
-                    checkPremium();
-                } else if (res.status === 401) location.href = "login.html";
-            } catch (err) { console.error("Sync Failure", err); }
+                    // FIX: Backend returns { success: true, data: [...] }
+                    activeNodes = responseData.data || [];
+                    renderUI();
+                } else if (res.status === 401) {
+                    triggerLogout();
+                }
+            } catch (err) {
+                console.error("Fetch Nodes Error:", err);
+                showError("Connection failed");
+            }
         }
 
-        function renderRegistry() {
+        async function pushNodeToCloud(node) {
+            showOverlay("Creating Cluster...");
+            try {
+                const res = await fetch(`${BASE}`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify(node)
+                });
+                
+                const responseData = await res.json();
+                
+                if (res.ok) {
+                    await syncNodes(); 
+                    return responseData.data;
+                } else {
+                    // Handle specific error messages from your backend
+                    showError(responseData.error || "Failed to create node");
+                    return null;
+                }
+            } catch (err) {
+                showError("Network Error");
+                return null;
+            } finally {
+                hideOverlay();
+            }
+        }
+
+        async function deleteNodeFromCloud(id) {
+            showOverlay("Terminating Cluster...");
+            try {
+                const res = await fetch(`${BASE}/${id}`, {
+                    method: "DELETE",
+                    headers: { "Authorization": `Bearer ${getToken()}` }
+                });
+                
+                if (res.ok) {
+                    await syncNodes();
+                } else {
+                    const data = await res.json();
+                    showError(data.error || "Delete failed");
+                }
+            } catch (err) {
+                showError("Delete Error");
+            } finally {
+                hideOverlay();
+            }
+        }
+
+        // ==========================================
+        // 4. UI RENDERING
+        // ==========================================
+        function renderUI() {
             const list = document.getElementById('entity-list');
             list.innerHTML = '';
             let total = 0;
-            
+
             if (activeNodes.length === 0) {
-                list.innerHTML = `<div class="col-span-full py-16 text-center opacity-30 font-black tracking-widest text-[10px] uppercase">No nodes currently transmitting...</div>`;
+                list.innerHTML = `<div class="col-span-full py-20 text-center opacity-30 font-black tracking-widest text-xs uppercase">No Nodes Detected In This Sector</div>`;
             }
 
             activeNodes.forEach(node => {
                 total += Number(node.amount || 0);
-                const nodeId = node._id || node.id;
-                const cd = getCountdown(node.expiryDate);
                 const card = document.createElement('div');
-                card.className = "glass p-6 md:p-8 rounded-[2rem] relative overflow-hidden interactive-card transition-all duration-300";
+                card.className = "glass p-8 rounded-[2.5rem] relative overflow-hidden group border border-white/5 hover:border-indigo-500/30 transition-all";
+                
+                // Flexible ID handling (MongoDB _id)
+                const nodeId = node._id || node.id;
+
                 card.innerHTML = `
                     <div class="flex justify-between items-start mb-6">
                         <div>
-                            <p class="text-[8px] font-black text-indigo-500 uppercase tracking-widest mb-0.5">${node.category}</p>
-                            <h4 class="text-lg md:text-xl font-black text-white truncate max-w-[150px]">${node.title}</h4>
+                            <p class="text-[8px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">${node.category || 'Node'}</p>
+                            <h4 class="text-xl font-black text-white">${node.title}</h4>
                         </div>
-                        <button onclick="handleDelete('${nodeId}')" class="w-9 h-9 rounded-lg bg-red-500/10 text-red-500/40 hover:bg-red-500 hover:text-white transition-all">
-                            <i class="fa-solid fa-trash-can text-[10px]"></i>
+                        <button onclick="handleDelete('${nodeId}')" class="w-10 h-10 rounded-xl bg-red-500/5 text-red-500/30 hover:bg-red-500 hover:text-white transition-all">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
                         </button>
                     </div>
-                    <div class="flex items-end gap-2 mb-6">
-                        <span class="text-3xl font-black flashing-green">₹${Number(node.amount).toLocaleString()}</span>
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="bg-slate-900/60 p-3 rounded-xl border border-white/5">
-                            <p class="text-[7px] font-black text-slate-500 uppercase mb-1">Cycle</p>
-                            <p class="text-[10px] font-bold text-slate-300 uppercase truncate">${node.frequency}</p>
+                    <p class="text-3xl font-black flashing-green mb-6">₹${Number(node.amount || 0).toLocaleString()}</p>
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-white/5">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-repeat text-slate-500 text-[10px]"></i>
+                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${node.frequency || 'Monthly'}</span>
+                            </div>
                         </div>
-                        <div class="bg-slate-900/60 p-3 rounded-xl border border-white/5">
-                            <p class="text-[7px] font-black text-slate-500 uppercase mb-1">Horizon</p>
-                            <p id="timer-${nodeId}" class="text-[11px] font-mono font-black ${cd.isCritical ? 'flashing-red' : 'text-indigo-500'}">
-                                ${cd.text}
-                            </p>
+                        <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-white/5">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-day text-indigo-500 text-[10px]"></i>
+                                <span class="text-[10px] font-mono font-bold text-slate-300">${new Date(node.expiryDate).toLocaleDateString()}</span>
+                            </div>
+                            <span class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Active Node</span>
                         </div>
                     </div>
                 `;
                 list.appendChild(card);
             });
+
             document.getElementById('stat-count').innerText = activeNodes.length;
             document.getElementById('stat-capital').innerText = `₹${total.toLocaleString()}`;
         }
 
-        function getCountdown(target) {
-            const dist = new Date(target) - new Date();
-            if (dist < 0) return { text: "DEPLETED", isCritical: true };
-            const days = Math.floor(dist / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const mins = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
-            const secs = Math.floor((dist % (1000 * 60)) / 1000);
-            return {
-                text: `${days}D:${hours}H:${mins}M`,
-                isCritical: days < 1
-            };
+        function renderCategories() {
+            const grid = document.getElementById('category-grid');
+            grid.innerHTML = '';
+            SECTORS.forEach(s => {
+                const card = document.createElement('div');
+                card.className = "sector-card glass p-6 rounded-[1.8rem] flex flex-col items-center gap-3 transition-all hover:bg-indigo-600/10 cursor-pointer group active:scale-95";
+                card.onclick = () => openModal(s);
+                card.innerHTML = `
+                    <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid ${s.icon} text-lg"></i>
+                    </div>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-indigo-300 text-center">${s.name}</span>
+                `;
+                grid.appendChild(card);
+            });
         }
 
-        function startTicker() {
-            if (ticker) clearInterval(ticker);
-            ticker = setInterval(() => {
-                activeNodes.forEach(node => {
-                    const el = document.getElementById(`timer-${node._id || node.id}`);
-                    if (el) {
-                        const cd = getCountdown(node.expiryDate);
-                        el.innerText = cd.text;
-                        if (cd.isCritical) el.classList.add('flashing-red');
-                    }
-                });
-            }, 60000); 
-        }
-
-        // Action Handlers
+        // ==========================================
+        // 5. INTERACTION HANDLERS
+        // ==========================================
         window.openModal = (sector) => {
-            if (activeNodes.length >= 2 && localStorage.getItem("isPremium") !== "true") {
-                document.getElementById('premium-modal').classList.remove('hidden');
-                return;
-            }
             selectedCategory = sector;
-            document.getElementById('modal-sector-title').innerText = `Init ${sector.name}`;
+            document.getElementById('modal-sector-title').innerText = `Deploy ${sector.name}`;
             const sub = document.getElementById('title');
             sub.innerHTML = sector.services.map(s => `<option value="${s}">${s}</option>`).join('');
             document.getElementById('modal').classList.remove('hidden');
         };
 
         window.closeModal = () => document.getElementById('modal').classList.add('hidden');
-        window.closePremiumModal = () => document.getElementById('premium-modal').classList.add('hidden');
-
-        // NEW: Bridge Functionality
-        window.bridgeToAdvanced = () => {
-            setOverlay("Establishing Neural Bridge...");
-            setTimeout(() => {
-                window.location.href = "others.html";
-            }, 1200);
-        };
-
-        window.simulatePayment = () => {
-            setOverlay("Validating Credentials...");
-            setTimeout(() => {
-                localStorage.setItem("isPremium", "true");
-                hideOverlay();
-                closePremiumModal();
-                checkPremium();
-            }, 1500);
-        };
-
-        function checkPremium() {
-            if (localStorage.getItem("isPremium") === "true") {
-                document.getElementById('premium-badge').classList.remove('hidden');
+        
+        window.handleDelete = async (id) => {
+            if (confirm("Terminate cluster node?")) {
+                await deleteNodeFromCloud(id);
             }
-        }
+        };
 
         document.getElementById('entity-form').onsubmit = async (e) => {
             e.preventDefault();
-            setOverlay("Establishing Uplink...");
+            // Sending keys that match your backend's primary verification
             const node = {
                 title: document.getElementById('title').value,
                 category: selectedCategory.name,
@@ -484,71 +408,60 @@
                 amount: Number(document.getElementById('amount').value),
                 expiryDate: document.getElementById('expiryDate').value
             };
-            try {
-                const res = await fetch(API_BASE, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${localStorage.getItem("token")}` },
-                    body: JSON.stringify(node)
-                });
-                if (res.ok) {
-                    await syncState();
-                    closeModal();
-                }
-            } finally { hideOverlay(); }
+            const result = await pushNodeToCloud(node);
+            if (result) closeModal();
         };
 
-        window.handleDelete = async (id) => {
-            if (!confirm("Decommission node?")) return;
-            setOverlay("Purging Memory...");
-            await fetch(`${API_BASE}/${id}`, {
-                method: "DELETE",
-                headers: { "Authorization": `Bearer ${localStorage.getItem("token")}` }
-            });
-            await syncState();
-            hideOverlay();
+        window.triggerLogout = () => {
+            localStorage.removeItem("token");
+            window.location.href = "index.html"; 
         };
 
-        window.triggerLogout = () => { if(confirm("Terminate session?")) { localStorage.removeItem("token"); location.href="login.html"; } };
+        function showError(msg) {
+            const toast = document.getElementById('error-toast');
+            toast.innerText = msg;
+            toast.style.display = 'block';
+            setTimeout(() => { toast.style.display = 'none'; }, 5000);
+        }
 
-        function setOverlay(t) {
+        function showOverlay(t) {
             document.getElementById('overlay-text').innerText = t;
-            const o = document.getElementById('global-overlay');
-            o.style.opacity = '1';
-            o.classList.remove('pointer-events-none');
+            const overlay = document.getElementById('global-overlay');
+            overlay.style.opacity = '1';
+            overlay.classList.remove('pointer-events-none');
         }
 
         function hideOverlay() {
-            const o = document.getElementById('global-overlay');
-            o.style.opacity = '0';
-            o.classList.add('pointer-events-none');
+            const overlay = document.getElementById('global-overlay');
+            overlay.style.opacity = '0';
+            overlay.classList.add('pointer-events-none');
         }
 
-        // Visual Engine
-        function initScene() {
+        // ==========================================
+        // 6. INITIALIZATION
+        // ==========================================
+        function init3D() {
             const canvas = document.getElementById('bg-canvas');
             const scene = new THREE.Scene();
             const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
             const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-            const points = new THREE.BufferGeometry();
-            const count = 1500;
-            const pos = new Float32Array(count * 3);
-            for(let i=0; i<count*3; i++) pos[i] = (Math.random() - 0.5) * 40;
-            points.setAttribute('position', new THREE.BufferAttribute(pos, 3));
             
-            const starField = new THREE.Points(points, new THREE.PointsMaterial({ size: 0.05, color: 0x6366f1, transparent: true, opacity: 0.5 }));
-            scene.add(starField);
-            camera.position.z = 10;
-
+            const stars = new THREE.BufferGeometry();
+            const pos = new Float32Array(3000);
+            for(let i=0; i<3000; i++) pos[i] = (Math.random() - 0.5) * 50;
+            stars.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            const starMat = new THREE.PointsMaterial({ size: 0.04, color: 0x6366f1, transparent: true, opacity: 0.4 });
+            const starPoints = new THREE.Points(stars, starMat);
+            scene.add(starPoints);
+            
+            camera.position.z = 5;
             function animate() {
                 requestAnimationFrame(animate);
-                starField.rotation.y += 0.0003;
+                starPoints.rotation.y += 0.0004;
                 renderer.render(scene, camera);
             }
             animate();
-            
             window.addEventListener('resize', () => {
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
@@ -557,23 +470,9 @@
         }
 
         window.addEventListener('load', () => {
-            initScene();
-            
-            const container = document.getElementById('category-grid');
-            SECTORS.forEach(s => {
-                const card = document.createElement('div');
-                card.className = "flex-shrink-0 w-32 md:w-40 glass p-5 md:p-6 rounded-[1.8rem] flex flex-col items-center gap-3 transition-all interactive-card group";
-                card.onclick = () => openModal(s);
-                card.innerHTML = `
-                    <div class="w-10 h-10 md:w-12 md:h-12 bg-slate-900 rounded-xl flex items-center justify-center text-indigo-400 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                        <i class="fa-solid ${s.icon} text-lg"></i>
-                    </div>
-                    <span class="text-[8px] md:text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-indigo-300 text-center">${s.name}</span>
-                `;
-                container.appendChild(card);
-            });
-
-            syncState();
+            init3D();
+            renderCategories();
+            syncNodes();
         });
     </script>
 </body>
