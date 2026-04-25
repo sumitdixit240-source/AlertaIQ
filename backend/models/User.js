@@ -3,6 +3,7 @@ const bcrypt = require("bcryptjs");
 
 const userSchema = new mongoose.Schema(
   {
+    // ================= BASIC INFO =================
     name: {
       type: String,
       required: true,
@@ -15,7 +16,7 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: true,
-      unique: true, // single index source
+      unique: true, // ✅ single source of truth for index
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, "Invalid email format"]
@@ -28,6 +29,7 @@ const userSchema = new mongoose.Schema(
       select: false
     },
 
+    // ================= ACCOUNT STATUS =================
     isVerified: {
       type: Boolean,
       default: false
@@ -44,11 +46,13 @@ const userSchema = new mongoose.Schema(
       default: "user"
     },
 
+    // ================= SECURITY =================
     tokenVersion: {
       type: Number,
       default: 0
     },
 
+    // ================= TRACKING =================
     lastLogin: {
       type: Date,
       default: null
@@ -58,7 +62,7 @@ const userSchema = new mongoose.Schema(
 );
 
 
-// ================= HASH PASSWORD =================
+// ================= PASSWORD HASH =================
 userSchema.pre("save", async function (next) {
   try {
     if (!this.isModified("password")) return next();
@@ -73,14 +77,14 @@ userSchema.pre("save", async function (next) {
 });
 
 
-// ================= COMPARE PASSWORD =================
+// ================= PASSWORD CHECK =================
 userSchema.methods.comparePassword = async function (enteredPassword) {
   if (!this.password) return false;
   return bcrypt.compare(enteredPassword, this.password);
 };
 
 
-// ================= FORCE LOGOUT =================
+// ================= SECURITY HELPERS =================
 userSchema.methods.incrementTokenVersion = async function () {
   this.tokenVersion += 1;
   await this.save();
