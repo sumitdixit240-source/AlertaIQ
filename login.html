@@ -577,9 +577,6 @@ const Auth = {
                     body: JSON.stringify({ email, otp })
                 });
 
-                UI.step = 'idle';
-                document.getElementById('otp-group').classList.add('hidden');
-                document.getElementById('main-btn').innerText = 'Unlock Dashboard';
                 this.saveSession(data.token);
                 return;
             }
@@ -626,10 +623,14 @@ const Auth = {
 
     saveSession(token) {
         if (token) {
+            // Store credentials
             localStorage.setItem("token", token);
             localStorage.setItem("token_time", Date.now());
+            
+            // Show UI feedback
             UI.showSuccess();
-            // ✅ REDIRECT TO DASHBOARD.HTML UPON SUCCESS
+            
+            // Redirect after delay to allow user to see the "Access Granted" message
             setTimeout(() => {
                 window.location.href = "dashboard.html";
             }, 1500);
