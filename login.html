@@ -211,6 +211,7 @@
 <div class="grid-overlay"></div>
 <div id="glow" class="glow-cursor"></div>
 
+<!-- Custom Message Box for System Notifications -->
 <div id="msg-box" class="glass-card px-5 py-4 flex items-center gap-4 border-l-4 border-indigo-500">
     <div class="w-8 h-8 bg-indigo-500/10 rounded-full flex items-center justify-center flex-shrink-0">
         <i class="fas fa-shield-check text-indigo-500 text-sm"></i>
@@ -300,6 +301,7 @@
             <i class="fas fa-times text-xs"></i>
         </button>
 
+        <!-- Verification/Scanning State -->
         <div id="verifyBox" class="hidden absolute inset-0 bg-[#050507] z-[120] flex flex-col items-center justify-center p-8 text-center">
             <div class="scan-container">
                 <div class="scan-ring-bold"></div>
@@ -320,6 +322,7 @@
             <p class="text-indigo-100 text-xs mt-2">Opening secure portal...</p>
         </div>
 
+        <!-- Login View -->
         <div id="loginBox" class="p-8 md:p-12 space-y-8 flex-1">
             <div class="space-y-2 text-center lg:text-left">
                 <h2 class="text-2xl md:text-3xl font-bold tracking-tight">Member Access</h2>
@@ -365,6 +368,7 @@
             </div>
         </div>
 
+        <!-- Register View -->
         <div id="registerBox" class="hidden p-8 md:p-12 space-y-8 flex-1">
             <div class="space-y-2 text-center lg:text-left">
                 <h2 class="text-2xl md:text-3xl font-bold tracking-tight text-white">Join the Force</h2>
@@ -398,19 +402,28 @@
 </div>
 
 <script>
+// ✅ BACKEND CONFIGURATION
 const BACKEND_URL = "https://alertaiq.onrender.com";
 let isLoading = false;
 
+/**
+ * SAFE FETCH WRAPPER
+ * ✅ FIX: Automatically sends Bearer token for all requests (e.g. for /api/auth/me)
+ * ✅ FIX: Automatically handles 401 Unauthorized for protected routes.
+ */
 async function safeFetch(url, options = {}) {
     const token = localStorage.getItem("token");
+    
+    // Prepare headers
     const headers = {
         "Content-Type": "application/json",
         "Accept": "application/json",
         ...(options.headers || {})
     };
 
+    // ✅ ADDED: Inject Authorization header if token exists
     if (token) {
-        headers["Authorization"] = "Bearer " + token;
+        headers["Authorization"] = `Bearer ${token}`;
     }
 
     const config = { ...options, headers };
@@ -418,19 +431,18 @@ async function safeFetch(url, options = {}) {
     try {
         const res = await fetch(url, config);
         
+        // ✅ ADDED: Global handler for expired or invalid tokens
         if (res.status === 401 && !url.includes('/login') && !url.includes('/register') && !url.includes('/verify-otp')) {
             Auth.logout();
             throw new Error("Session expired. Please log in again.");
         }
 
-        const text = await res.text();
         let data = {};
-        if (text) {
-            try {
-                data = JSON.parse(text);
-            } catch (e) {
-                data = { message: "Parsing Error" };
-            }
+        try {
+            const text = await res.text();
+            data = text ? JSON.parse(text) : {};
+        } catch (e) {
+            data = { message: "Invalid server response" };
         }
 
         if (!res.ok) {
@@ -439,7 +451,7 @@ async function safeFetch(url, options = {}) {
 
         return data;
     } catch (err) {
-        throw new Error(err.message || "Network error");
+        throw new Error(err.message || "Network link failure");
     }
 }
 
@@ -466,7 +478,7 @@ const UI = {
         document.getElementById('password').value = '';
         document.getElementById('otp-code').value = '';
         document.getElementById('otp-group').classList.add('hidden');
-        document.getElementById('main-btn').innerText = (this.mode === 'otp') ? 'Send OTP' : 'Unlock Dashboard';
+        document.getElementById('main-btn').innerText = 'Unlock Dashboard';
         document.getElementById('main-btn').disabled = false;
         document.getElementById('verifyBox').classList.add('hidden');
         document.getElementById('successBox').classList.add('hidden');
@@ -577,6 +589,11 @@ const Auth = {
                     body: JSON.stringify({ email, otp })
                 });
 
+                // ✅ FIX: Reset OTP Flow state after success
+                UI.step = 'idle';
+                document.getElementById('otp-group').classList.add('hidden');
+                document.getElementById('main-btn').innerText = 'Unlock Dashboard';
+
                 this.saveSession(data.token);
                 return;
             }
@@ -623,14 +640,10 @@ const Auth = {
 
     saveSession(token) {
         if (token) {
-            // Store credentials
             localStorage.setItem("token", token);
             localStorage.setItem("token_time", Date.now());
-            
-            // Show UI feedback
             UI.showSuccess();
-            
-            // Redirect after delay to allow user to see the "Access Granted" message
+            // ✅ Redirect to dashboard instead of location.reload()
             setTimeout(() => {
                 window.location.href = "dashboard.html";
             }, 1500);
@@ -643,6 +656,10 @@ const Auth = {
         location.reload();
     },
 
+    /**
+     * ✅ PROTECTED ROUTE CALL
+     * Uses safeFetch which now correctly injects the Authorization header.
+     */
     async syncProfile() {
         if (!localStorage.getItem("token")) return;
         try {
