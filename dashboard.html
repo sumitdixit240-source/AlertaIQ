@@ -1,32 +1,427 @@
 <!DOCTYPE html>
-<html lang="en">    
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard</title>
-    <link rel="stylesheet" href="styles.css">   
+    <title>Core.AI | Premium Backend Node Manager</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
+        
+        :root {
+            --accent: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.3);
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: #020617;
+            color: #f8fafc;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; 
+            display: flex;
+            flex-direction: column;
+        }
+
+        #bg-canvas {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            z-index: -1;
+            opacity: 0.6;
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .main-viewport {
+            flex: 1;
+            overflow-y: auto;
+            padding-bottom: 100px;
+            scrollbar-gutter: stable;
+        }
+
+        .horizontal-scroll {
+            display: flex;
+            overflow-x: auto;
+            gap: 1rem;
+            padding-bottom: 1rem;
+            scrollbar-width: thin;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .horizontal-scroll::-webkit-scrollbar { height: 4px; }
+        .horizontal-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
+        .horizontal-scroll::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 20px; border: 2px solid transparent; background-clip: content-box; }
+        ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
+
+        .flashing-green { animation: pulse-green 1.5s infinite; }
+        @keyframes pulse-green { 0%, 100% { color: #4ade80; } 50% { color: #22c55e; } }
+
+        .loader-ring {
+            border: 4px solid rgba(99, 102, 241, 0.1);
+            border-left-color: #6366f1;
+            border-radius: 50%;
+            width: 45px; height: 45px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .sector-card {
+            min-width: 130px;
+            flex-shrink: 0;
+        }
+
+        .ai-glow {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.2) !important;
+        }
+    </style>
 </head>
-<body>
+<body class="antialiased">
 
-    hello world
+    <canvas id="bg-canvas"></canvas>
 
+    <div id="global-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[200] flex flex-col items-center justify-center transition-opacity duration-500 opacity-0 pointer-events-none">
+        <div class="loader-ring mb-4"></div>
+        <p id="overlay-text" class="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Syncing with Mainframe...</p>
+    </div>
 
-<header>
-    <h1>Dashboard</h1>      
+    <header class="glass m-4 md:m-6 rounded-[2.5rem] p-5 flex justify-between items-center z-50">
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                <i class="fa-solid fa-layer-group text-xl text-white"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-black tracking-tighter">Core.AI</h2>
+                <p id="user-display" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Vercel API Connected</p>
+            </div>
+        </div>
+        <button onclick="triggerLogout()" class="px-5 py-3 rounded-xl bg-slate-900/50 border border-slate-700/50 text-slate-400 hover:text-red-400 transition-all text-[10px] font-black uppercase tracking-widest">
+            <i class="fa-solid fa-power-off"></i>
+        </button>
+    </header>
 
-    <nav>
-        <ul>
-            <li><a href="#">Home</a></li>
-            <li><a href="#">Profile</a></li>
-            <li><a href="#">Settings</a></li>
-            <li><a href="#">Logout</a></li>
-        </ul>
-    </nav>
-</header>
+    <main class="main-viewport px-4 md:px-8 space-y-8">
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
+            <div class="glass p-6 rounded-[2rem] border-l-4 border-l-indigo-500">
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Clusters</p>
+                <h3 id="stat-count" class="text-3xl font-black mt-1 text-white">0</h3>
+            </div>
+            <div class="glass p-6 rounded-[2rem]">
+                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Global Allocation</p>
+                <h3 id="stat-capital" class="text-3xl font-black mt-1 text-indigo-400">₹0</h3>
+            </div>
+            <div class="glass p-6 rounded-[2rem] flex items-center justify-between">
+                <div>
+                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Network Status</p>
+                    <h3 class="text-xl font-black mt-1 text-emerald-500 italic">SECURE</h3>
+                </div>
+                <i class="fa-solid fa-shield-halved text-emerald-500 text-2xl"></i>
+            </div>
+        </div>
 
+        <section class="max-w-7xl mx-auto">
+            <div class="flex items-center gap-4 mb-4">
+                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Deploy Sector</h3>
+                <div class="h-px flex-grow bg-white/5"></div>
+            </div>
+            <div id="category-grid" class="horizontal-scroll"></div>
+        </section>
 
+        <section class="max-w-7xl mx-auto space-y-6">
+            <div class="flex items-center gap-4">
+                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Operational Clusters</h3>
+                <div class="h-px flex-grow bg-white/5"></div>
+            </div>
+            <div id="entity-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
+        </section>
+    </main>
 
-            
+    <div id="modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-[150] hidden flex items-center justify-center p-4">
+        <div class="glass w-full max-w-lg rounded-[3rem] overflow-hidden flex flex-col shadow-2xl">
+            <div class="p-8 border-b border-white/5 bg-gradient-to-r from-indigo-600/10 to-transparent flex justify-between items-center">
+                <h3 id="modal-sector-title" class="text-2xl font-black tracking-tighter text-white">Initialize Node</h3>
+                <button onclick="closeModal()" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
+                    <i class="fa-solid fa-xmark text-white"></i>
+                </button>
+            </div>
+            <form id="entity-form" class="p-8 space-y-6">
+                <div class="space-y-3">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Provider Title</label>
+                    <select id="title" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none focus:border-indigo-500"></select>
+                </div>
+                <div class="space-y-3">
+                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Notification Email</label>
+                    <input type="email" id="email" required placeholder="admin@core.ai" class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="space-y-3">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount (₹)</label>
+                        <input type="number" id="amount" required placeholder="0" class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-emerald-400 outline-none">
+                    </div>
+                    <div class="space-y-3">
+                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Expiry Date</label>
+                        <input type="date" id="expiryDate" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
+                    </div>
+                </div>
+                <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-xl text-[11px] font-black uppercase tracking-[0.3em] text-white transition-all active:scale-95">
+                    Deploy to Cloud
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <script type="module">
+        // ======================
+        // API CONFIG
+        // ======================
+        const BASE = "https://alertai-q.vercel.app/api";
+        
+        function getToken() {
+            return localStorage.getItem("token");
+        }
+
+        // ======================
+        // GLOBAL STATE
+        // ======================
+        let activeNodes = [];
+        let selectedCategory = null;
+
+        const SECTORS = [
+            { id: "saas", name: "SaaS", icon: "fa-cloud", services: ["Adobe", "Slack", "Zoom", "Office 365", "Figma", "Canva"] },
+            { id: "dev", name: "Build", icon: "fa-code", services: ["Vercel", "GitHub", "AWS", "DigitalOcean", "Supabase", "MongoDB"] },
+            { id: "fin", name: "Finance", icon: "fa-wallet", services: ["Stripe", "PayPal", "Amex", "HDFC", "SBI", "Robinhood"] },
+            { id: "stream", name: "Media", icon: "fa-film", services: ["Netflix", "Spotify", "Apple TV", "Prime Video", "Hulu", "Disney+"] },
+            { id: "util", name: "Utility", icon: "fa-bolt", services: ["Electric", "Water", "Gas", "WiFi", "Broadband", "Cellular"] }
+        ];
+
+        // ======================
+        // CLOUD OPERATIONS
+        // ======================
+        async function pushNodeToCloud(node) {
+            showOverlay("Creating Cluster...");
+            try {
+                const res = await fetch(`${BASE}/nodes/create`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${getToken()}`
+                    },
+                    body: JSON.stringify(node)
+                });
+                const data = await res.json();
+                if (!res.ok) throw data;
+                await syncNodes(); // Refresh after create
+                return data._id || data.id;
+            } catch (err) {
+                console.error("Create error:", err);
+                return null;
+            } finally {
+                hideOverlay();
+            }
+        }
+
+        async function getNodesFromCloud() {
+            try {
+                const res = await fetch(`${BASE}/nodes/all`, {
+                    method: "GET",
+                    headers: {
+                        "Authorization": `Bearer ${getToken()}`
+                    }
+                });
+                if (!res.ok) return [];
+                return await res.json();
+            } catch (err) {
+                console.error(err);
+                return [];
+            }
+        }
+
+        async function deleteNodeFromCloud(id) {
+            showOverlay("Terminating Cluster...");
+            try {
+                const res = await fetch(`${BASE}/nodes/delete/${id}`, {
+                    method: "DELETE",
+                    headers: {
+                        "Authorization": `Bearer ${getToken()}`
+                    }
+                });
+                await syncNodes();
+                return await res.json();
+            } catch (err) {
+                console.error(err);
+                return null;
+            } finally {
+                hideOverlay();
+            }
+        }
+
+        // ======================
+        // UI CORE
+        // ======================
+        async function syncNodes() {
+            activeNodes = await getNodesFromCloud();
+            renderUI();
+        }
+
+        function renderUI() {
+            const list = document.getElementById('entity-list');
+            list.innerHTML = '';
+            let total = 0;
+
+            activeNodes.forEach(node => {
+                total += Number(node.amount || 0);
+                const card = document.createElement('div');
+                card.className = "glass p-8 rounded-[2.5rem] relative overflow-hidden group border border-white/5 hover:border-indigo-500/30 transition-all";
+                
+                const isNotified = node.reminderSent ? 
+                    '<span class="text-[8px] font-black text-emerald-400 uppercase tracking-widest"><i class="fa-solid fa-check-double mr-1"></i> Notified</span>' : 
+                    '<span class="text-[8px] font-black text-amber-500 uppercase tracking-widest"><i class="fa-solid fa-clock mr-1"></i> Monitoring</span>';
+
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-6">
+                        <div>
+                            <p class="text-[8px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">${node.category || 'Node'}</p>
+                            <h4 class="text-xl font-black text-white">${node.title}</h4>
+                        </div>
+                        <button onclick="handleDelete('${node._id || node.id}')" class="w-10 h-10 rounded-xl bg-red-500/5 text-red-500/30 hover:bg-red-500 hover:text-white transition-all">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                    <p class="text-3xl font-black flashing-green mb-6">₹${Number(node.amount || 0).toLocaleString()}</p>
+                    <div class="space-y-3">
+                        <div class="flex items-center gap-3 p-4 bg-slate-900/50 rounded-2xl border border-white/5">
+                            <i class="fa-solid fa-envelope text-slate-500 text-[10px]"></i>
+                            <span class="text-[10px] font-bold text-slate-400 truncate">${node.email}</span>
+                        </div>
+                        <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-white/5">
+                            <div class="flex items-center gap-2">
+                                <i class="fa-solid fa-calendar-day text-indigo-500 text-[10px]"></i>
+                                <span class="text-[10px] font-mono font-bold text-slate-300">${new Date(node.expiryDate).toLocaleDateString()}</span>
+                            </div>
+                            ${isNotified}
+                        </div>
+                    </div>
+                `;
+                list.appendChild(card);
+            });
+
+            document.getElementById('stat-count').innerText = activeNodes.length;
+            document.getElementById('stat-capital').innerText = `₹${total.toLocaleString()}`;
+        }
+
+        // ======================
+        // HANDLERS
+        // ======================
+        window.openModal = (sector) => {
+            selectedCategory = sector;
+            document.getElementById('modal-sector-title').innerText = `Deploy ${sector.name}`;
+            const sub = document.getElementById('title');
+            sub.innerHTML = sector.services.map(s => `<option value="${s}">${s}</option>`).join('');
+            document.getElementById('modal').classList.remove('hidden');
+        };
+
+        window.closeModal = () => document.getElementById('modal').classList.add('hidden');
+        
+        window.handleDelete = async (id) => {
+            await deleteNodeFromCloud(id);
+        };
+
+        document.getElementById('entity-form').onsubmit = async (e) => {
+            e.preventDefault();
+            const node = {
+                title: document.getElementById('title').value,
+                email: document.getElementById('email').value,
+                amount: document.getElementById('amount').value,
+                expiryDate: document.getElementById('expiryDate').value,
+                category: selectedCategory.name,
+                reminderSent: false,
+                lastSent: null
+            };
+            const result = await pushNodeToCloud(node);
+            if (result) closeModal();
+        };
+
+        window.triggerLogout = () => {
+            localStorage.removeItem("token");
+            window.location.href = "index.html"; // Assuming a login page
+        };
+
+        // ======================
+        // SYSTEM UI
+        // ======================
+        function renderCategories() {
+            const grid = document.getElementById('category-grid');
+            grid.innerHTML = '';
+            SECTORS.forEach(s => {
+                const card = document.createElement('div');
+                card.className = "sector-card glass p-6 rounded-[1.8rem] flex flex-col items-center gap-3 transition-all hover:bg-indigo-600/10 cursor-pointer group active:scale-95";
+                card.onclick = () => openModal(s);
+                card.innerHTML = `
+                    <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid ${s.icon} text-lg"></i>
+                    </div>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-indigo-300 text-center">${s.name}</span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function showOverlay(t) {
+            document.getElementById('overlay-text').innerText = t;
+            const overlay = document.getElementById('global-overlay');
+            overlay.style.opacity = '1';
+            overlay.classList.remove('pointer-events-none');
+        }
+
+        function hideOverlay() {
+            const overlay = document.getElementById('global-overlay');
+            overlay.style.opacity = '0';
+            overlay.classList.add('pointer-events-none');
+        }
+
+        // ======================
+        // THREE.JS BG
+        // ======================
+        function init3D() {
+            const canvas = document.getElementById('bg-canvas');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            const stars = new THREE.BufferGeometry();
+            const pos = new Float32Array(3000);
+            for(let i=0; i<3000; i++) pos[i] = (Math.random() - 0.5) * 50;
+            stars.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+            const starMat = new THREE.PointsMaterial({ size: 0.04, color: 0x6366f1, transparent: true, opacity: 0.4 });
+            const starPoints = new THREE.Points(stars, starMat);
+            scene.add(starPoints);
+            camera.position.z = 5;
+            function animate() {
+                requestAnimationFrame(animate);
+                starPoints.rotation.y += 0.0005;
+                renderer.render(scene, camera);
+            }
+            animate();
+        }
+
+        window.addEventListener('load', () => {
+            init3D();
+            renderCategories();
+            syncNodes();
+        });
+    </script>
 </body>
-
 </html>
