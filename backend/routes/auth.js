@@ -9,6 +9,7 @@ const auth = require("../middleware/auth");
 
 const router = express.Router();
 
+
 // ================= TOKEN =================
 const createToken = (user) => {
   return jwt.sign(
@@ -16,46 +17,53 @@ const createToken = (user) => {
       id: user._id,
       email: user.email,
       role: user.role,
-      tokenVersion: user.tokenVersion,
+      isVerified: user.isVerified
     },
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
 };
 
-// ================= AUTH RESPONSE (FIXED FOR FRONTEND) =================
+
+// ================= AUTH RESPONSE =================
 const sendAuthResponse = (user, res, message = "Success") => {
   const token = createToken(user);
 
   return res.json({
     success: true,
     message,
-    token,              // 🔥 IMPORTANT (FLAT)
+    token,
     user: {
       id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-    },
+      isVerified: user.isVerified
+    }
   });
 };
 
-//
+
 // ================= REGISTER =================
-//
 router.post("/register", async (req, res) => {
   try {
     let { name, email, password } = req.body || {};
 
     if (!name || !email || !password) {
-      return res.status(400).json({ success: false, message: "All fields required" });
+      return res.status(400).json({
+        success: false,
+        message: "All fields required"
+      });
     }
 
     email = email.toLowerCase().trim();
 
     const exists = await User.findOne({ email });
     if (exists) {
-      return res.status(409).json({ success: false, message: "User already exists" });
+      return res.status(409).json({
+        success: false,
+        message: "User already exists"
+      });
     }
 
     await User.create({
@@ -63,88 +71,87 @@ router.post("/register", async (req, res) => {
       email,
       password,
       role: "user",
-      tokenVersion: 0,
       isVerified: false,
+      tokenVersion: 0
     });
 
     return res.json({
       success: true,
-      message: "Registered successfully",
+      message: "Registered successfully"
     });
 
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ success: false, message: "Registration failed" });
+    return res.status(500).json({
+      success: false,
+      message: "Registration failed"
+    });
   }
 });
 
-//
+
 // ================= SEND OTP =================
-//
 router.post("/send-otp", async (req, res) => {
   try {
     let { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({ success: false, message: "Email required" });
+      return res.status(400).json({
+        success: false,
+        message: "Email required"
+      });
     }
 
     email = email.toLowerCase().trim();
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
     }
 
     const otp = generateOTP();
 
     await OTP.deleteMany({ email });
-    await OTP.create({ email, otp });
+
+    await OTP.create({
+      email,
+      otp,
+      createdAt: new Date(),
+      expiresAt: Date.now() + 5 * 60 * 1000
+    });
 
     await sendMail(
-  email,
-  "AlertAIQ OTP Verification",
-  `
-  <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-    
-    <h2 style="color:#4F46E5;">🔐 AlertAIQ OTP Verification</h2>
-    
-    <p>
-      Your AlertAIQ OTP is shown below. Use this One-Time Password to securely complete your verification process. 
-      This code helps protect your account and ensures that only you can access your services. 
-      Please enter it promptly before it expires.
-    </p>
-
-    <h1 style="letter-spacing:3px; color:#111;">${otp}</h1>
-
-    <ul>
-      <li>Valid for 5 minutes only</li>
-      <li>Never share this OTP with anyone</li>
-      <li>Ignore this email if not requested</li>
-    </ul>
-
-    <p style="font-size:12px; color:#777;">
-      © AlertAIQ — Smart Alerts & Notifications
-    </p>
-
-  </div>
-  `
-);
+      email,
+      "AlertAIQ OTP Verification",
+      `
+      <div style="font-family:Arial;padding:20px">
+        <h2>🔐 AlertAIQ Verification</h2>
+        <p>Your OTP is:</p>
+        <h1>${otp}</h1>
+        <p>Valid for 5 minutes</p>
+      </div>
+      `
+    );
 
     return res.json({
       success: true,
-      message: "OTP sent",
+      message: "OTP sent"
     });
 
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ success: false, message: "OTP failed" });
+    return res.status(500).json({
+      success: false,
+      message: "OTP failed"
+    });
   }
 });
 
-//
+
 // ================= VERIFY OTP =================
-//
 router.post("/verify-otp", async (req, res) => {
   try {
     let { email, otp } = req.body;
@@ -152,12 +159,27 @@ router.post("/verify-otp", async (req, res) => {
     email = email.toLowerCase().trim();
 
     const record = await OTP.findOne({ email });
+
     if (!record) {
-      return res.status(400).json({ success: false, message: "OTP not found" });
+      return res.status(400).json({
+        success: false,
+        message: "OTP not found"
+      });
     }
 
-    if (record.otp !== otp) {
-      return res.status(400).json({ success: false, message: "Invalid OTP" });
+    if (record.otp != otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP"
+      });
+    }
+
+    if (record.expiresAt && Date.now() > record.expiresAt) {
+      await OTP.deleteMany({ email });
+      return res.status(400).json({
+        success: false,
+        message: "OTP expired"
+      });
     }
 
     await User.updateOne({ email }, { isVerified: true });
@@ -169,13 +191,15 @@ router.post("/verify-otp", async (req, res) => {
 
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ success: false, message: "Verification failed" });
+    return res.status(500).json({
+      success: false,
+      message: "Verification failed"
+    });
   }
 });
 
-//
-// ================= LOGIN (FIXED MAIN ISSUE) =================
-//
+
+// ================= LOGIN =================
 router.post("/login", async (req, res) => {
   try {
     let { email, password } = req.body;
@@ -185,42 +209,55 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found"
+      });
     }
 
     if (!user.isVerified) {
-      return res.status(403).json({ success: false, message: "Verify OTP first" });
+      return res.status(403).json({
+        success: false,
+        message: "Verify OTP first"
+      });
     }
 
     const ok = await user.comparePassword(password);
 
     if (!ok) {
-      return res.status(400).json({ success: false, message: "Invalid password" });
+      return res.status(400).json({
+        success: false,
+        message: "Invalid password"
+      });
     }
 
-    // 🔥 FIX: direct token return
     return sendAuthResponse(user, res, "Login successful");
 
   } catch (err) {
     console.error(err);
-    return res.status(500).json({ success: false, message: "Login failed" });
+    return res.status(500).json({
+      success: false,
+      message: "Login failed"
+    });
   }
 });
 
-//
+
 // ================= ME =================
-//
 router.get("/me", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
 
     return res.json({
       success: true,
-      user,
+      user
     });
 
   } catch (err) {
-    return res.status(500).json({ success: false, message: "Failed to fetch user" });
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch user"
+    });
   }
 });
 

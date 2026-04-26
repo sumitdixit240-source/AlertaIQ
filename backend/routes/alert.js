@@ -7,7 +7,7 @@ const sendMail = require("../services/mailer");
 const auth = require("../middleware/auth");
 
 
-// ================= HEALTH CHECK =================
+// ================= HEALTH =================
 router.get("/", auth, (req, res) => {
   res.json({
     success: true,
@@ -20,24 +20,62 @@ router.get("/", auth, (req, res) => {
 // ================= CREATE ALERT =================
 router.post(["/create", "/add"], auth, async (req, res) => {
   try {
-    const { title, message, description } = req.body;
+    const {
+      title,
+      category,
+      amount,
+      expiryDate,
+      frequency
+    } = req.body;
 
-    if (!title && !message && !description) {
+    // 🔐 VALIDATION
+    if (!title || !expiryDate) {
       return res.status(400).json({
         success: false,
-        message: "Title or message required"
+        message: "title and expiryDate required"
       });
+    }
+
+    const expiry = new Date(expiryDate);
+
+    if (isNaN(expiry.getTime())) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid expiry date"
+      });
+    }
+
+    // 🔥 NEXT RUN LOGIC (CRON READY)
+    const now = new Date();
+    let nextRunAt = new Date(expiry);
+
+    if (frequency === "daily") {
+      nextRunAt.setDate(now.getDate() + 1);
+    } else if (frequency === "weekly") {
+      nextRunAt.setDate(now.getDate() + 7);
+    } else if (frequency === "monthly") {
+      nextRunAt.setMonth(now.getMonth() + 1);
+    } else if (frequency === "yearly") {
+      nextRunAt.setFullYear(now.getFullYear() + 1);
     }
 
     const alert = await Alert.create({
       userId: req.user.id,
-      title: title || "No Title",
-      message: message || description || ""
+      email: req.user.email,
+      title: title.trim(),
+      category: category || "General",
+      amount: amount || 0,
+      expiryDate: expiry,
+      frequency: frequency || "one-time",
+      lastSent: null,
+      nextRunAt,
+      status: "active",
+      reminderSent: false
     });
 
     res.json({
       success: true,
-      message: "Alert created",
+      message: "Alert created successfully",
       data: alert
     });
 
@@ -51,7 +89,7 @@ router.post(["/create", "/add"], auth, async (req, res) => {
 });
 
 
-// ================= GET USER ALERTS =================
+// ================= GET ALERTS =================
 router.get(["/my", "/list"], auth, async (req, res) => {
   try {
     const alerts = await Alert.find({
@@ -73,16 +111,15 @@ router.get(["/my", "/list"], auth, async (req, res) => {
 });
 
 
-// ================= SEND OTP (SECURE VERSION) =================
+// ================= SEND OTP =================
 router.post("/send-otp", auth, async (req, res) => {
   try {
     const email = req.user.email;
 
-    // 🔥 Prevent OTP spam (delete old first)
     await OTP.deleteMany({ userId: req.user.id });
 
     const otp = Math.floor(100000 + Math.random() * 900000);
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
+    const expiresAt = Date.now() + 5 * 60 * 1000;
 
     await OTP.create({
       email,
@@ -94,7 +131,7 @@ router.post("/send-otp", auth, async (req, res) => {
 
     await sendMail(
       email,
-      "RenewAI OTP Verification",
+      "AlertAIQ OTP Verification",
       `<h2>Your OTP is: ${otp}</h2><p>Valid for 5 minutes</p>`
     );
 
@@ -113,7 +150,7 @@ router.post("/send-otp", auth, async (req, res) => {
 });
 
 
-// ================= VERIFY OTP (SECURE VERSION) =================
+// ================= VERIFY OTP =================
 router.post("/verify-otp", auth, async (req, res) => {
   try {
     const { otp } = req.body;
@@ -130,7 +167,6 @@ router.post("/verify-otp", auth, async (req, res) => {
       });
     }
 
-    // ⛔ expiry check
     if (record.expiresAt && Date.now() > record.expiresAt) {
       await OTP.deleteMany({ userId: req.user.id });
       return res.status(400).json({
