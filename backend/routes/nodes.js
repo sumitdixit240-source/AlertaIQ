@@ -1,185 +1,83 @@
-const express = require("express");
-const router = express.Router();
+const mongoose = require("mongoose");
 
-const Node = require("../models/Node");
-const User = require("../models/User");
-const auth = require("../middleware/auth");
+const nodeSchema = new mongoose.Schema(
+  {
+    // ================= USER ISOLATION =================
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+      immutable: true,
+    },
 
+    // ================= CORE DATA =================
+    category: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
 
-// ================= GET USER NODES =================
-router.get("/", auth, async (req, res) => {
-  try {
-    const nodes = await Node.find({ userId: req.user.id })
-      .sort({ createdAt: -1 });
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      index: true,
+    },
 
-    return res.json({
-      success: true,
-      data: nodes
-    });
+    // ================= FREQUENCY =================
+    frequency: {
+      type: String,
+      enum: ["daily", "weekly", "monthly", "yearly", "one-time"],
+      default: "monthly",
+      index: true,
+    },
 
-  } catch (err) {
-    console.error("GET NODES ERROR:", err.message);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to fetch nodes"
-    });
+    // ================= FINANCIAL =================
+    amount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+
+    // ================= TIMING =================
+    expiryDate: {
+      type: Date,
+      required: true,
+      index: true,
+    },
+
+    // ================= STATUS (🔥 IMPORTANT FOR SAAS) =================
+    status: {
+      type: String,
+      enum: ["active", "expired", "paused"],
+      default: "active",
+      index: true,
+    },
+
+    // ================= AI FEATURE =================
+    aiSuggestion: {
+      type: String,
+      default: "",
+    },
+  },
+  {
+    timestamps: true,
+    versionKey: false,
   }
-});
+);
 
+// ================= PERFORMANCE INDEX =================
+nodeSchema.index({ userId: 1, createdAt: -1 });
+nodeSchema.index({ userId: 1, expiryDate: 1 });
+nodeSchema.index({ userId: 1, status: 1 });
 
-// ================= CREATE NODE =================
-router.post("/", auth, async (req, res) => {
-  try {
-    const {
-      cat,
-      sub,
-      freq,
-      amt,
-      expiry,
-      category,
-      title,
-      frequency,
-      amount,
-      expiryDate
-    } = req.body || {};
+// ================= PREVENT DUPLICATES (OPTIONAL BUT STRONG) =================
+// Prevent same user adding same title + expiry multiple times
+nodeSchema.index(
+  { userId: 1, title: 1, expiryDate: 1 },
+  { unique: true }
+);
 
-    const finalCategory = category || cat;
-    const finalTitle = title || sub;
-    const finalFreq = frequency || freq;
-    const finalAmount = amount ?? amt;
-    const finalExpiry = expiryDate || expiry;
-
-    // validation
-    if (!finalCategory || !finalTitle || !finalFreq || finalAmount == null || !finalExpiry) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing required fields"
-      });
-    }
-
-    // user check
-    const user = await User.findById(req.user.id);
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        error: "User not found"
-      });
-    }
-
-    // free plan limit
-    const count = await Node.countDocuments({ userId: req.user.id });
-
-    if (!user.isPro && count >= 2) {
-      return res.status(403).json({
-        success: false,
-        error: "Free limit reached (Max 2 nodes)"
-      });
-    }
-
-    // create node (clean + controlled fields only)
-    const node = await Node.create({
-      userId: req.user.id,
-      category: finalCategory,
-      title: finalTitle,
-      frequency: finalFreq,
-      amount: Number(finalAmount),
-      expiryDate: new Date(finalExpiry),
-      createdAt: new Date()
-    });
-
-    return res.status(201).json({
-      success: true,
-      data: node
-    });
-
-  } catch (err) {
-    console.error("CREATE NODE ERROR:", err.message);
-    return res.status(500).json({
-      success: false,
-      error: "Failed to create node"
-    });
-  }
-});
-
-
-// ================= UPDATE NODE (SAFE VERSION) =================
-router.put("/:id", auth, async (req, res) => {
-  try {
-    const allowedFields = [
-      "category",
-      "title",
-      "frequency",
-      "amount",
-      "expiryDate"
-    ];
-
-    const updateData = {};
-
-    allowedFields.forEach((key) => {
-      if (req.body[key] !== undefined) {
-        updateData[key] = req.body[key];
-      }
-    });
-
-    const node = await Node.findOneAndUpdate(
-      {
-        _id: req.params.id,
-        userId: req.user.id
-      },
-      { $set: updateData },
-      { new: true }
-    );
-
-    if (!node) {
-      return res.status(404).json({
-        success: false,
-        error: "Node not found or unauthorized"
-      });
-    }
-
-    return res.json({
-      success: true,
-      data: node
-    });
-
-  } catch (err) {
-    console.error("UPDATE ERROR:", err.message);
-    return res.status(500).json({
-      success: false,
-      error: "Update failed"
-    });
-  }
-});
-
-
-// ================= DELETE NODE =================
-router.delete("/:id", auth, async (req, res) => {
-  try {
-    const node = await Node.findOneAndDelete({
-      _id: req.params.id,
-      userId: req.user.id
-    });
-
-    if (!node) {
-      return res.status(404).json({
-        success: false,
-        error: "Node not found or unauthorized"
-      });
-    }
-
-    return res.json({
-      success: true,
-      message: "Node deleted successfully",
-      id: req.params.id
-    });
-
-  } catch (err) {
-    console.error("DELETE ERROR:", err.message);
-    return res.status(500).json({
-      success: false,
-      error: "Delete failed"
-    });
-  }
-});
-
-module.exports = router;
+module.exports = mongoose.model("Node", nodeSchema);
