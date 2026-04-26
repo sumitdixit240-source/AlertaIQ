@@ -114,31 +114,43 @@ router.post("/send-otp", async (req, res) => {
 
     const otp = generateOTP();
 
+    // remove old OTPs
     await OTP.deleteMany({ email });
 
+    // save new OTP
     await OTP.create({
       email,
       otp,
       createdAt: new Date(),
-      expiresAt: Date.now() + 5 * 60 * 1000
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000) // FIXED
     });
 
-    await sendMail(
-      email,
-      "AlertAIQ OTP Verification",
+    // ================= FIXED MAIL SEND =================
+    const mailResult = await sendMail({
+      to: email,
+      subject: "AlertAIQ OTP Verification",
+      html: `
+        <div style="font-family:Arial;padding:20px">
+          <h2>🔐 AlertAIQ Verification</h2>
+          <p>Your OTP is:</p>
+          <h1 style="color:#111">${otp}</h1>
+          <p>Valid for 5 minutes</p>
+        </div>
       `
-      <div style="font-family:Arial;padding:20px">
-        <h2>🔐 AlertAIQ Verification</h2>
-        <p>Your OTP is:</p>
-        <h1>${otp}</h1>
-        <p>Valid for 5 minutes</p>
-      </div>
-      `
-    );
+    });
+
+    console.log("MAIL RESULT:", mailResult);
+
+    if (!mailResult.success) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to send OTP email"
+      });
+    }
 
     return res.json({
       success: true,
-      message: "OTP sent"
+      message: "OTP sent successfully"
     });
 
   } catch (err) {
@@ -174,8 +186,9 @@ router.post("/verify-otp", async (req, res) => {
       });
     }
 
-    if (record.expiresAt && Date.now() > record.expiresAt) {
+    if (Date.now() > record.expiresAt.getTime()) {
       await OTP.deleteMany({ email });
+
       return res.status(400).json({
         success: false,
         message: "OTP expired"
