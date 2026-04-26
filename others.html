@@ -3,343 +3,592 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AlertaiQ - Official Tax & Compliance Bot</title>
+    <title>AlertaiQ | GST & E-Invoice Compliance Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
-        
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #f8fafc;
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #FDFDFF; }
+        .glass-card { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(241, 245, 249, 1); }
+        .tab-active { background-color: white; color: #4F46E5; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        .compliance-error { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+        @keyframes shake {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
         }
 
-        .chat-container::-webkit-scrollbar {
-            width: 5px;
+        /* Notification Panel Styling */
+        #notification-panel {
+            transform: translateX(100%);
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .chat-container::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        .chat-container::-webkit-scrollbar-thumb {
-            background: #e2e8f0;
-            border-radius: 10px;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-slide-in {
-            animation: slideIn 0.3s ease-out forwards;
-        }
-
-        .glass-nav {
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-        
-        .status-dot {
-            height: 8px;
-            width: 8px;
-            background-color: #22c55e;
-            border-radius: 50%;
-            display: inline-block;
-            margin-right: 6px;
-            box-shadow: 0 0 8px #22c55e;
-        }
+        #notification-panel.open { transform: translateX(0); }
+        .timer-font { font-family: monospace; font-variant-numeric: tabular-nums; }
     </style>
 </head>
-<body class="text-slate-900 antialiased overflow-hidden">
+<body class="text-slate-900 overflow-x-hidden">
 
-    <!-- Top Status Bar -->
-    <div class="bg-slate-900 text-white text-[10px] py-2 px-6 flex justify-between items-center font-bold tracking-widest uppercase border-b border-slate-800">
-        <div class="flex items-center gap-4">
-            <span class="flex items-center">
-                <span class="status-dot animate-pulse"></span>
-                System: AlertaiQ Core v4.0
-            </span>
-            <span class="text-slate-500 hidden md:inline border-l border-slate-700 pl-4">Verified Source: Official Gazette of India</span>
+    <!-- Notification Side Panel -->
+    <div id="notification-overlay" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[100] hidden transition-opacity duration-300"></div>
+    <div id="notification-panel" class="fixed top-0 right-0 h-full w-full max-w-md bg-white z-[101] shadow-2xl flex flex-col">
+        <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+            <div>
+                <h3 class="text-xl font-black text-slate-900 tracking-tight">Compliance Tracker</h3>
+                <p id="live-time" class="text-[10px] font-black text-indigo-600 uppercase tracking-widest mt-1"></p>
+            </div>
+            <button onclick="toggleNotifications()" class="w-10 h-10 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-all"><i class="fas fa-times"></i></button>
         </div>
-        <div class="flex items-center gap-4">
-            <span class="text-slate-400">Node: Delta-9</span>
-            <i class="fas fa-shield-halved text-orange-500"></i>
+        
+        <div class="flex-1 overflow-y-auto p-6 space-y-4" id="notification-list">
+            <!-- Deadlines Injected by JS -->
+        </div>
+
+        <div class="p-6 border-t border-slate-100 bg-slate-50 text-center">
+            <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest">FY 2026-2027 Master Calendar</p>
         </div>
     </div>
 
-    <div class="flex h-screen overflow-hidden">
-        
-        <!-- Sidebar -->
-        <aside class="hidden lg:flex w-85 bg-white border-r border-slate-200 flex-col overflow-hidden">
-            <div class="p-6 border-b border-slate-100 flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="bg-orange-600 p-2.5 rounded-2xl shadow-lg shadow-orange-100 transform rotate-3">
-                        <i class="fas fa-bolt-lightning text-white"></i>
-                    </div>
-                    <div>
-                        <h1 class="font-black text-xl tracking-tighter leading-none">AlertaiQ</h1>
-                        <span class="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tax Bot Engine</span>
-                    </div>
-                </div>
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-slate-100 sticky top-0 z-50 py-4 px-6 md:px-12 flex justify-between items-center shadow-sm">
+        <div class="flex items-center gap-2 group cursor-pointer" onclick="showTab('dashboard')">
+            <div class="bg-slate-900 p-2 rounded-xl group-hover:bg-indigo-600 transition-colors">
+                <i class="fas fa-chart-line text-white text-sm"></i>
             </div>
+            <div>
+                <span class="text-xl font-black tracking-tight text-slate-900">AlertaiQ</span>
+                <span class="text-[10px] block font-black text-indigo-600 tracking-tighter uppercase leading-none">GST Intel Hub</span>
+            </div>
+        </div>
 
-            <div class="flex-1 overflow-y-auto p-6 space-y-8 chat-container">
-                <!-- Official Portals Section -->
-                <div>
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fas fa-landmark"></i> Official Portals
-                    </h3>
-                    <div class="grid grid-cols-1 gap-2">
-                        <a href="https://www.incometax.gov.in" target="_blank" class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-orange-200 transition-all group">
-                            <span class="text-xs font-bold text-slate-700">Income Tax Dept</span>
-                            <i class="fas fa-external-link-alt text-[10px] text-slate-300 group-hover:text-orange-500"></i>
-                        </a>
-                        <a href="https://www.gst.gov.in" target="_blank" class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-orange-200 transition-all group">
-                            <span class="text-xs font-bold text-slate-700">GST Common Portal</span>
-                            <i class="fas fa-external-link-alt text-[10px] text-slate-300 group-hover:text-orange-500"></i>
-                        </a>
-                        <a href="https://www.mca.gov.in" target="_blank" class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-orange-200 transition-all group">
-                            <span class="text-xs font-bold text-slate-700">MCA (Company Filings)</span>
-                            <i class="fas fa-external-link-alt text-[10px] text-slate-300 group-hover:text-orange-500"></i>
-                        </a>
-                        <a href="https://www.epfindia.gov.in" target="_blank" class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100 hover:border-orange-200 transition-all group">
-                            <span class="text-xs font-bold text-slate-700">EPFO Portal</span>
-                            <i class="fas fa-external-link-alt text-[10px] text-slate-300 group-hover:text-orange-500"></i>
-                        </a>
+        <div class="hidden md:flex gap-1 bg-slate-50 p-1 rounded-2xl border border-slate-100">
+            <button onclick="showTab('dashboard')" id="btn-dashboard" class="nav-btn px-6 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all tab-active">Dashboard</button>
+            <button onclick="showTab('generator')" id="btn-generator" class="nav-btn px-6 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all text-slate-400">Generator</button>
+            <button onclick="showTab('ledger')" id="btn-ledger" class="nav-btn px-6 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all text-slate-400">Ledger</button>
+            <button onclick="showTab('circulars')" id="btn-circulars" class="nav-btn px-6 py-2 rounded-xl text-xs font-black uppercase tracking-wider transition-all text-slate-400">Circulars</button>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <button onclick="toggleNotifications()" class="p-2.5 rounded-xl bg-slate-50 text-slate-600 border border-slate-100 relative hover:bg-indigo-600 hover:text-white transition-all">
+                <i class="fas fa-bell"></i>
+                <span class="absolute top-2 right-2 w-2 h-2 bg-rose-500 rounded-full border-2 border-white animate-pulse"></span>
+            </button>
+        </div>
+    </nav>
+
+    <main class="max-w-7xl mx-auto p-6 md:p-12">
+        <!-- Top Stats -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">GST Liability</p>
+                <p id="stat-liability" class="text-4xl font-black text-rose-600">₹60,750</p>
+                <p class="text-[10px] font-bold text-slate-400 mt-2">Current GSTR-1 Draft</p>
+            </div>
+            <div class="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Available ITC</p>
+                <p id="stat-itc" class="text-4xl font-black text-emerald-600">₹14,200</p>
+                <p class="text-[10px] font-bold text-slate-400 mt-2">Validated GSTR-2B</p>
+            </div>
+            <div class="bg-slate-900 p-8 rounded-[2.5rem] text-white">
+                <p class="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-6">Net Cash Payable</p>
+                <p id="stat-net" class="text-4xl font-black">₹46,550</p>
+                <p class="text-[10px] font-bold text-indigo-400 mt-2">Offset by Credit Ledger</p>
+            </div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div id="tab-dashboard" class="tab-content space-y-8">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
+                    <h2 class="text-xl font-black mb-8 flex items-center gap-3"><i class="fas fa-calendar-alt text-rose-500"></i> Filing Deadlines</h2>
+                    <div class="space-y-4" id="deadline-container">
+                        <!-- Injected by JS -->
                     </div>
                 </div>
-
-                <!-- Compliance Deadlines Section -->
-                <div>
-                    <h3 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                        <i class="fas fa-calendar-check"></i> Statutory Deadlines
-                    </h3>
-                    <div class="space-y-3">
-                        <div class="p-4 rounded-2xl bg-orange-50 border border-orange-100 border-l-4 border-l-orange-500">
-                            <div class="flex justify-between items-start mb-1">
-                                <p class="text-[9px] font-black text-orange-600 uppercase">TDS Deposit</p>
-                                <span class="bg-white px-1.5 py-0.5 rounded text-[8px] font-black text-orange-600">CRITICAL</span>
-                            </div>
-                            <p class="text-xs font-bold text-slate-800">Monthly Payment (April)</p>
-                            <p class="text-[10px] font-bold text-slate-500 mt-1">Due: May 07, 2026</p>
-                        </div>
-
-                        <div class="p-4 rounded-2xl bg-blue-50 border border-blue-100 border-l-4 border-l-blue-500">
-                            <p class="text-[9px] font-black text-blue-600 uppercase mb-1">GSTR-1</p>
-                            <p class="text-xs font-bold text-slate-800">Monthly Return Filing</p>
-                            <p class="text-[10px] font-bold text-slate-500 mt-1">Due: May 11, 2026</p>
-                        </div>
-
-                        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-100 border-l-4 border-l-emerald-500">
-                            <p class="text-[9px] font-black text-emerald-600 uppercase mb-1">PF & ESI</p>
-                            <p class="text-xs font-bold text-slate-800">Contribution Deposit</p>
-                            <p class="text-[10px] font-bold text-slate-500 mt-1">Due: May 15, 2026</p>
-                        </div>
-
-                        <div class="p-4 rounded-2xl bg-purple-50 border border-purple-100 border-l-4 border-l-purple-500">
-                            <p class="text-[9px] font-black text-purple-600 uppercase mb-1">GSTR-3B</p>
-                            <p class="text-xs font-bold text-slate-800">Summary Return</p>
-                            <p class="text-[10px] font-bold text-slate-500 mt-1">Due: May 20, 2026</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-slate-900 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden">
+                <div class="bg-slate-900 p-10 rounded-[3rem] text-white relative overflow-hidden flex flex-col justify-center">
                     <div class="relative z-10">
-                        <p class="text-[10px] font-black text-orange-500 uppercase mb-2 tracking-widest">AlertaiQ Pro</p>
-                        <p class="text-xs font-bold mb-4 leading-tight">Get WhatsApp alerts for every deadline.</p>
-                        <button class="w-full py-3 bg-orange-600 text-white text-[10px] font-black uppercase rounded-xl hover:bg-orange-500 transition-all active:scale-95">Enable Alerts</button>
+                        <h3 class="text-3xl font-black mb-4 tracking-tight">E-Invoice Compliance</h3>
+                        <p class="text-slate-400 mb-8 font-medium leading-relaxed max-w-sm">Generate B2B invoices, E-way bills, and Credit notes matching Government of India standards instantly.</p>
+                        <button onclick="showTab('generator')" class="bg-indigo-600 px-10 py-5 rounded-2xl font-black text-xs tracking-[0.2em] hover:bg-white hover:text-slate-900 transition-all shadow-2xl shadow-indigo-500/20 uppercase">Open Generator</button>
                     </div>
-                    <i class="fas fa-bell absolute -bottom-4 -right-4 text-slate-800 text-6xl opacity-50"></i>
+                    <i class="fas fa-shield-alt absolute top-0 right-0 opacity-10 -rotate-12 translate-x-1/4 -translate-y-1/4" style="font-size: 300px;"></i>
                 </div>
             </div>
-        </aside>
+        </div>
 
-        <!-- Main Chat Area -->
-        <main class="flex-1 flex flex-col bg-slate-50 relative">
-            
-            <!-- Floating Header -->
-            <header class="glass-nav border-b border-slate-200 px-8 py-5 flex items-center justify-between z-10">
-                <div class="flex items-center gap-4">
-                    <div class="lg:hidden bg-orange-600 p-2 rounded-lg">
-                        <i class="fas fa-bolt-lightning text-white text-xs"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-sm font-black text-slate-800 uppercase tracking-tighter">Statutory Intelligence Node</h2>
-                        <div class="flex items-center gap-2">
-                            <span class="text-[9px] text-green-600 font-bold uppercase tracking-widest">Live: Finance Act 2024-25</span>
-                            <span class="text-slate-300 text-[8px]">|</span>
-                            <span class="text-[9px] text-slate-400 font-bold uppercase">Zero-Hallucination Active</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="flex items-center gap-3">
-                    <button class="bg-white border border-slate-200 text-slate-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-slate-50 transition-all flex items-center gap-2 shadow-sm">
-                        <i class="fas fa-download"></i> Audit Log
+        <!-- Generator Tab -->
+        <div id="tab-generator" class="tab-content hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                <!-- Sidebar: Doc Types -->
+                <div class="xl:col-span-3 space-y-3" id="doc-type-selector">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2 mb-2">Select Document Type</p>
+                    <button onclick="setDocType('Tax Invoice')" class="doc-btn w-full flex items-center justify-between p-5 rounded-2xl transition-all border bg-indigo-600 text-white border-indigo-600 shadow-xl shadow-indigo-100 scale-[1.02]">
+                        <div class="flex items-center gap-3"><i class="fas fa-file-invoice"></i><span class="text-[10px] font-black uppercase">Tax Invoice</span></div>
+                        <span class="text-[8px] font-bold px-2 py-1 rounded bg-white/20">Rule 46</span>
+                    </button>
+                    <button onclick="setDocType('E-Way Bill')" class="doc-btn w-full flex items-center justify-between p-5 rounded-2xl transition-all border bg-white text-slate-500 border-slate-100">
+                        <div class="flex items-center gap-3"><i class="fas fa-truck"></i><span class="text-[10px] font-black uppercase">E-Way Bill</span></div>
+                        <span class="text-[8px] font-bold px-2 py-1 rounded bg-slate-100">Rule 138</span>
+                    </button>
+                    <button onclick="setDocType('Credit Note')" class="doc-btn w-full flex items-center justify-between p-5 rounded-2xl transition-all border bg-white text-slate-500 border-slate-100">
+                        <div class="flex items-center gap-3"><i class="fas fa-history"></i><span class="text-[10px] font-black uppercase">Credit Note</span></div>
+                        <span class="text-[8px] font-bold px-2 py-1 rounded bg-slate-100">Sec 34</span>
                     </button>
                 </div>
-            </header>
 
-            <!-- Messages Window -->
-            <div id="chat" class="flex-1 overflow-y-auto p-6 md:p-10 space-y-8 chat-container">
-                <!-- Initial Bot Message -->
-                <div class="flex justify-start animate-slide-in">
-                    <div class="flex gap-4 max-w-[85%]">
-                        <div class="w-12 h-12 rounded-[20px] bg-white border-2 border-slate-100 flex items-center justify-center text-orange-600 shadow-md flex-shrink-0">
-                            <i class="fas fa-robot text-xl"></i>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="bg-white border border-slate-200 p-6 rounded-[32px] rounded-tl-none shadow-sm">
-                                <p class="text-sm leading-relaxed text-slate-700 font-semibold">
-                                    Namaste! I am <span class="text-orange-600 font-black">AlertaiQ</span>. 
-                                    I am synced with the official Income Tax and GST portals. 
-                                    <br><br>
-                                    How can I assist your compliance today? You can ask about <span class="underline decoration-orange-300">"Slabs for FY 24-25"</span>, <span class="underline decoration-orange-300">"GST registration threshold"</span>, or <span class="underline decoration-orange-300">"TDS rates"</span>.
-                                </p>
+                <!-- Main Form -->
+                <div class="xl:col-span-9">
+                    <div class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black text-slate-400 uppercase ml-2">Invoice Number</label>
+                                <input id="inp-inv-no" class="w-full bg-slate-50 border-transparent border-2 focus:border-indigo-100 p-4 rounded-2xl font-bold uppercase outline-none" placeholder="INV/2026/001">
                             </div>
-                            <div class="flex gap-2">
-                                <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 bg-slate-100 rounded-full">Source: Govt. Gazette</span>
-                                <span class="text-[8px] font-black text-slate-400 uppercase tracking-widest px-3 py-1 bg-slate-100 rounded-full">Updated: April 2026</span>
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black text-slate-400 uppercase ml-2">Supplier GSTIN</label>
+                                <input id="inp-seller-gst" class="w-full bg-slate-50 border-transparent border-2 focus:border-indigo-100 p-4 rounded-2xl font-bold uppercase outline-none" placeholder="27AAAAA0000A1Z5">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[9px] font-black text-slate-400 uppercase ml-2">Buyer GSTIN</label>
+                                <input id="inp-buyer-gst" class="w-full bg-slate-50 border-transparent border-2 focus:border-indigo-100 p-4 rounded-2xl font-bold uppercase outline-none" placeholder="07BBBBB0000B1Z5">
+                            </div>
+                        </div>
+
+                        <!-- Item Table -->
+                        <div class="overflow-x-auto mb-8">
+                            <table class="w-full text-left" id="invoice-items">
+                                <thead class="text-[9px] font-black text-slate-400 uppercase border-b border-slate-50">
+                                    <tr>
+                                        <th class="pb-4">Description</th>
+                                        <th class="pb-4 w-28">HSN/SAC</th>
+                                        <th class="pb-4 w-20 text-center">Qty</th>
+                                        <th class="pb-4 w-28">Rate</th>
+                                        <th class="pb-4 w-20">GST %</th>
+                                        <th class="pb-4 text-right">Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="border-b border-slate-50">
+                                        <td class="py-4"><input class="w-full bg-transparent font-bold outline-none item-desc" placeholder="Product/Service Name"></td>
+                                        <td class="py-4"><input class="w-full bg-transparent font-bold outline-none item-hsn" placeholder="8471"></td>
+                                        <td class="py-4 text-center"><input type="number" class="w-full bg-transparent font-bold outline-none text-center item-qty" value="1"></td>
+                                        <td class="py-4"><input type="number" class="w-full bg-transparent font-bold outline-none item-rate" value="0"></td>
+                                        <td class="py-4">
+                                            <select class="bg-transparent font-black outline-none item-gst">
+                                                <option value="18">18%</option>
+                                                <option value="12">12%</option>
+                                                <option value="5">5%</option>
+                                                <option value="28">28%</option>
+                                                <option value="0">0%</option>
+                                            </select>
+                                        </td>
+                                        <td class="py-4 text-right font-black item-total">₹0.00</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Validation Alerts -->
+                        <div id="validation-box" class="hidden mb-8 p-6 bg-rose-50 border border-rose-100 rounded-3xl animate-in slide-in-from-top-4">
+                            <div class="flex items-center gap-2 text-rose-600 mb-3"><i class="fas fa-exclamation-circle"></i><span class="text-[10px] font-black uppercase tracking-widest">Compliance Diagnostics</span></div>
+                            <ul id="error-list" class="space-y-1.5 text-xs font-bold text-rose-800">
+                                <!-- Errors here -->
+                            </ul>
+                        </div>
+
+                        <div class="flex flex-col lg:flex-row justify-between items-center gap-6 border-t border-slate-50 pt-10">
+                            <div class="flex gap-3">
+                                <button onclick="generateDoc('PDF')" class="bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-[10px] flex items-center gap-2 hover:bg-indigo-600 transition-all shadow-xl shadow-slate-100"><i class="fas fa-file-pdf"></i> DOWNLOAD PDF</button>
+                                <button onclick="generateDoc('Excel')" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-2xl font-black text-[10px] hover:border-emerald-500 hover:text-emerald-600 transition-all">EXCEL</button>
+                                <button onclick="generateDoc('JSON')" class="bg-white border border-slate-200 text-slate-600 px-6 py-4 rounded-2xl font-black text-[10px] hover:border-amber-500 hover:text-amber-600 transition-all">PORTAL JSON</button>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[9px] font-black text-slate-400 uppercase mb-1">Grand Total</p>
+                                <p id="grand-total-display" class="text-3xl font-black">₹0</p>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Input Section -->
-            <div class="p-8 bg-white border-t border-slate-200">
-                <div class="max-w-4xl mx-auto">
-                    <div class="flex gap-4 items-center">
-                        <div class="relative flex-1 group">
-                            <div class="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 transition-colors group-focus-within:text-orange-600">
-                                <i class="fas fa-magnifying-glass"></i>
-                            </div>
-                            <input id="input" type="text" placeholder="Query the statutory engine (e.g., 'What is the penalty for late GSTR-3B?')..."
-                                class="w-full bg-slate-50 border-2 border-slate-100 rounded-3xl pl-14 pr-24 py-5 text-sm font-bold focus:outline-none focus:border-orange-500/40 focus:bg-white transition-all shadow-inner">
-                            <div class="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-3">
-                                <i class="fas fa-paperclip text-slate-300 hover:text-slate-500 cursor-pointer"></i>
-                                <span class="h-6 w-[1px] bg-slate-200"></span>
-                                <i class="fas fa-microphone text-slate-300 hover:text-orange-600 cursor-pointer"></i>
-                            </div>
-                        </div>
-                        <button onclick="send()" class="bg-slate-900 hover:bg-orange-600 text-white p-5 rounded-2xl shadow-xl shadow-slate-200 transition-all active:scale-95">
-                            <i class="fas fa-bolt-lightning text-lg"></i>
-                        </button>
-                    </div>
-                    <div class="mt-4 flex justify-between items-center px-4">
-                        <p class="text-[9px] text-slate-400 font-black uppercase tracking-[0.2em]">
-                            <i class="fas fa-shield-check text-green-500 mr-1"></i> Data Grounding Active
-                        </p>
-                        <div class="flex gap-6">
-                            <span class="text-[9px] text-slate-300 font-bold uppercase">Section 115BAC Ready</span>
-                            <span class="text-[9px] text-slate-300 font-bold uppercase">GST Act 2017 Integrated</span>
-                        </div>
-                    </div>
+        <!-- Ledger Tab -->
+        <div id="tab-ledger" class="tab-content hidden animate-in fade-in slide-in-from-bottom-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 flex items-center gap-4">
+                    <div class="bg-indigo-50 p-3 rounded-2xl text-indigo-600"><i class="fas fa-arrow-trend-up"></i></div>
+                    <div><p class="text-[10px] font-black text-slate-400 uppercase">Total Sales</p><p class="text-lg font-black">₹3,40,500</p></div>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 flex items-center gap-4">
+                    <div class="bg-emerald-50 p-3 rounded-2xl text-emerald-600"><i class="fas fa-check-circle"></i></div>
+                    <div><p class="text-[10px] font-black text-slate-400 uppercase">Realized</p><p class="text-lg font-black">24 Bills</p></div>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 flex items-center gap-4">
+                    <div class="bg-rose-50 p-3 rounded-2xl text-rose-600"><i class="fas fa-clock"></i></div>
+                    <div><p class="text-[10px] font-black text-slate-400 uppercase">Pending</p><p class="text-lg font-black">04 Bills</p></div>
+                </div>
+                <div class="bg-white p-6 rounded-[2rem] border border-slate-100 flex items-center gap-4">
+                    <div class="bg-slate-50 p-3 rounded-2xl text-slate-600"><i class="fas fa-users"></i></div>
+                    <div><p class="text-[10px] font-black text-slate-400 uppercase">Client Base</p><p class="text-lg font-black">12 B2B</p></div>
                 </div>
             </div>
-        </main>
-    </div>
 
+            <section class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm min-h-[500px]">
+                <div class="flex flex-col lg:flex-row justify-between items-center gap-6 mb-12">
+                    <h2 class="text-3xl font-black text-slate-900 tracking-tight">Sales Ledger</h2>
+                    <div class="flex items-center gap-4 w-full lg:w-auto">
+                        <div class="relative flex-1 lg:w-64">
+                            <i class="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
+                            <input onkeyup="filterLedger(this.value)" class="w-full bg-slate-50 border-2 border-transparent focus:border-indigo-100 pl-11 pr-4 py-3 rounded-2xl text-xs font-bold outline-none" placeholder="Search Ledger...">
+                        </div>
+                        <button onclick="showTab('generator')" class="bg-indigo-600 text-white px-6 py-3 rounded-2xl text-[9px] font-black tracking-widest flex items-center gap-2 shadow-xl shadow-indigo-100"><i class="fas fa-plus"></i> NEW INVOICE</button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full" id="ledger-table">
+                        <thead class="text-[9px] font-black text-slate-400 uppercase border-b border-slate-50">
+                            <tr>
+                                <th class="pb-6 px-4 text-left">Invoice ID</th>
+                                <th class="pb-6 text-left">Recipient</th>
+                                <th class="pb-6 text-left">Date</th>
+                                <th class="pb-6 text-right">Taxable Value</th>
+                                <th class="pb-6 text-center">Status</th>
+                                <th class="pb-6 text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-xs font-bold text-slate-600">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </div>
+
+        <!-- Circulars Tab -->
+        <div id="tab-circulars" class="tab-content hidden animate-in fade-in slide-in-from-bottom-4">
+            <section class="bg-white p-10 rounded-[3rem] border border-slate-100 shadow-sm">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8 mb-12">
+                    <div>
+                        <h2 class="text-4xl font-black text-slate-900 tracking-tight mb-3">Regulatory Repository</h2>
+                        <p class="text-slate-400 font-medium leading-relaxed">Official CBIC Notifications & Circulars synced daily with GOI servers.</p>
+                    </div>
+                    <button onclick="syncCirculars()" id="sync-btn" class="flex items-center gap-2 bg-indigo-600 text-white px-6 py-3 rounded-2xl text-[10px] font-black tracking-widest hover:bg-slate-900 transition-all shadow-xl shadow-indigo-100">
+                        <i class="fas fa-sync-alt"></i> SYNC DAILY CIRCULARS
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 gap-6" id="circular-container">
+                    <!-- Injected by JS -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="mt-20 border-t border-slate-100 py-20 bg-white">
+        <div class="max-w-7xl mx-auto px-6 text-center">
+            <div class="flex justify-center gap-4 mb-6 text-indigo-600">
+                <i class="fas fa-shield-halved fa-2x"></i>
+                <i class="fas fa-building fa-2x"></i>
+            </div>
+            <p class="text-[10px] font-black text-slate-300 uppercase tracking-[0.4em]">© 2026 AlertaiQ Technologies • Govt of India Rule Compliant • 256-Bit Secure Environment</p>
+        </div>
+    </footer>
+
+    <!-- Scripts -->
     <script>
-        async function send() {
-            let input = document.getElementById("input");
-            let chat = document.getElementById("chat");
+        // State Management
+        let currentDocType = "Tax Invoice";
+        const ledgerData = [
+            { id: 'INV/26/101', client: 'Alpha Corp (B2B)', date: '2026-04-20', amount: 85000, status: 'Paid' },
+            { id: 'INV/26/102', client: 'Retail Customer (B2C)', date: '2026-04-22', amount: 12500, status: 'Pending' },
+            { id: 'INV/26/103', client: 'Zenith Logistics', date: '2026-04-25', amount: 24000, status: 'Overdue' }
+        ];
 
-            let text = input.value.trim();
-            if (!text) return;
+        const circulars = [
+            { id: '210/2026', title: 'Clarification on RCM for Vehicle Renting', dept: 'Central Tax', date: '2026-04-25', isNew: true },
+            { id: '209/2026', title: 'Standard Operating Procedure for Export Refund Scrutiny', dept: 'Integrated Tax', date: '2026-03-28', isNew: false }
+        ];
 
-            // Add User Message
-            const userMsgHtml = `
-                <div class="flex justify-end animate-slide-in">
-                    <div class="flex gap-4 max-w-[80%] flex-row-reverse">
-                        <div class="w-12 h-12 rounded-[20px] bg-slate-900 text-white flex items-center justify-center shadow-xl flex-shrink-0">
-                            <i class="fas fa-user-tie"></i>
-                        </div>
-                        <div class="space-y-1">
-                            <div class="bg-slate-900 text-white p-6 rounded-[32px] rounded-tr-none shadow-2xl">
-                                <p class="text-sm font-bold">${text}</p>
-                            </div>
-                            <p class="text-[8px] font-black text-slate-400 uppercase tracking-widest text-right">Verified Request</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            chat.innerHTML += userMsgHtml;
-            input.value = "";
-            chat.scrollTop = chat.scrollHeight;
+        const deadlines = [
+            // GST
+            { name: 'GSTR-1 (April Sales)', due: '2026-05-11T23:59:59', cat: 'GST', icon: 'fa-file-invoice' },
+            { name: 'GSTR-3B (April Filing)', due: '2026-05-20T23:59:59', cat: 'GST', icon: 'fa-calculator' },
+            { name: 'GSTR-1 (May Sales)', due: '2026-06-11T23:59:59', cat: 'GST', icon: 'fa-file-invoice' },
+            
+            // INCOME TAX
+            { name: 'TDS Payment (April)', due: '2026-05-07T23:59:59', cat: 'TAX', icon: 'fa-hand-holding-usd' },
+            { name: 'Advance Tax (Q1)', due: '2026-06-15T23:59:59', cat: 'TAX', icon: 'fa-landmark' },
+            { name: 'TDS Return (Q4 Prev FY)', due: '2026-05-31T23:59:59', cat: 'TAX', icon: 'fa-file-contract' },
+            { name: 'ITR Filing (Individuals)', due: '2026-07-31T23:59:59', cat: 'TAX', icon: 'fa-user-tie' },
+            { name: 'Tax Audit (FY 25-26)', due: '2026-09-30T23:59:59', cat: 'TAX', icon: 'fa-clipboard-check' },
+            
+            // ROC / MCA
+            { name: 'Form AOC-4 (Annual)', due: '2026-10-30T23:59:59', cat: 'ROC', icon: 'fa-building' },
+            { name: 'DIR-3 KYC Filing', due: '2026-09-30T23:59:59', cat: 'ROC', icon: 'fa-id-card' },
+            { name: 'Form MGT-7 (Annual)', due: '2026-11-29T23:59:59', cat: 'ROC', icon: 'fa-file-signature' },
 
-            // Analysis Steps Mockup
-            const loadingId = 'loading-' + Date.now();
-            chat.innerHTML += `
-                <div id="${loadingId}" class="flex justify-start animate-slide-in">
-                    <div class="flex gap-4 items-center">
-                        <div class="w-12 h-12 rounded-[20px] bg-white border-2 border-slate-100 flex items-center justify-center text-orange-600 shadow-sm flex-shrink-0">
-                            <i class="fas fa-microchip animate-pulse"></i>
-                        </div>
-                        <div class="bg-slate-100/50 px-4 py-2 rounded-full border border-slate-200">
-                             <p class="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em]">Analyzing Gazette & Statutes...</p>
-                        </div>
-                    </div>
-                </div>
-            `;
-            chat.scrollTop = chat.scrollHeight;
+            // OTHERS
+            { name: 'PF & ESI Contribution', due: '2026-05-15T23:59:59', cat: 'LAB', icon: 'fa-users' }
+        ];
 
-            try {
-                // Connecting to Python Backend at localhost:8000
-                let res = await fetch("http://localhost:8000/ask", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({question: text})
-                });
-
-                let data = await res.json();
-                document.getElementById(loadingId).remove();
-
-                const botMsgHtml = `
-                    <div class="flex justify-start animate-slide-in">
-                        <div class="flex gap-4 max-w-[85%]">
-                            <div class="w-12 h-12 rounded-[20px] bg-white border-2 border-slate-100 flex items-center justify-center text-orange-600 shadow-md flex-shrink-0">
-                                <i class="fas fa-robot text-xl"></i>
-                            </div>
-                            <div class="space-y-3">
-                                <div class="bg-white border border-slate-200 p-7 rounded-[32px] rounded-tl-none shadow-sm relative overflow-hidden">
-                                    <div class="absolute top-0 right-0 w-1 h-full bg-orange-500/20"></div>
-                                    <p class="text-sm leading-relaxed text-slate-700 font-semibold">${data.answer}</p>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <span class="text-[8px] font-black bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-100 flex items-center gap-1">
-                                        <i class="fas fa-check-double"></i> STATUTORY DATA GROUNDED
-                                    </span>
-                                    <span class="text-[8px] font-black text-slate-300 uppercase">Ref: Portal-Sync-Delta</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                chat.innerHTML += botMsgHtml;
-            } catch (error) {
-                document.getElementById(loadingId).remove();
-                chat.innerHTML += `
-                    <div class="flex justify-center p-4">
-                        <div class="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl flex items-center gap-3 shadow-sm">
-                            <i class="fas fa-triangle-exclamation"></i>
-                            <div>
-                                <p class="text-[10px] font-black uppercase">Local Node Error</p>
-                                <p class="text-[9px] font-bold">Please ensure your Python Backend is active at http://localhost:8000</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
+        // --- Notification Logic ---
+        function toggleNotifications() {
+            const panel = document.getElementById('notification-panel');
+            const overlay = document.getElementById('notification-overlay');
+            panel.classList.toggle('open');
+            if(panel.classList.contains('open')) {
+                overlay.classList.remove('hidden');
+                setTimeout(() => overlay.style.opacity = '1', 10);
+            } else {
+                overlay.style.opacity = '0';
+                setTimeout(() => overlay.classList.add('hidden'), 300);
             }
-
-            chat.scrollTop = chat.scrollHeight;
         }
 
-        document.getElementById("input").addEventListener("keypress", (e) => {
-            if (e.key === "Enter") send();
-        });
-    </script>
+        function getCountdown(target) {
+            const dist = new Date(target).getTime() - new Date().getTime();
+            if (dist < 0) return "EXPIRED";
+            const d = Math.floor(dist / 86400000);
+            const h = Math.floor((dist % 86400000) / 3600000);
+            const m = Math.floor((dist % 3600000) / 60000);
+            const s = Math.floor((dist % 60000) / 1000);
+            return `${String(d).padStart(2, '0')}.${String(h).padStart(2, '0')}.${String(m).padStart(2, '0')}.${String(s).padStart(2, '0')}`;
+        }
 
+        function renderAllDeadlines() {
+            const list = document.getElementById('notification-list');
+            const sorted = [...deadlines].sort((a,b) => new Date(a.due) - new Date(b.due));
+            
+            document.getElementById('live-time').innerText = new Date().toLocaleTimeString('en-IN', {hour12: true});
+
+            list.innerHTML = sorted.map(item => {
+                const timer = getCountdown(item.due);
+                const isUrgent = timer !== "EXPIRED" && parseInt(timer.split('.')[0]) < 10;
+                const statusColor = timer === "EXPIRED" ? "text-slate-400" : (isUrgent ? "text-rose-600" : "text-indigo-600");
+
+                return `
+                    <div class="p-4 rounded-2xl border border-slate-100 bg-white hover:border-indigo-100 transition-all shadow-sm">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-lg bg-slate-50 flex items-center justify-center text-slate-400">
+                                    <i class="fas ${item.icon} text-xs"></i>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-black text-slate-800 leading-none uppercase">${item.name}</p>
+                                    <p class="text-[8px] font-bold text-slate-400 mt-1 uppercase tracking-tighter">${item.cat} COMPLIANCE</p>
+                                </div>
+                            </div>
+                            <span class="text-[8px] font-black px-2 py-1 rounded bg-slate-100 text-slate-500">${new Date(item.due).toLocaleDateString('en-IN', {day:'2-digit', month:'short'})}</span>
+                        </div>
+                        <div class="flex justify-between items-end mt-4 pt-4 border-t border-slate-50">
+                            <div>
+                                <p class="text-[7px] font-black text-slate-400 uppercase tracking-widest mb-1">Time to Deadline</p>
+                                <p class="timer-font text-xl font-black ${statusColor}">${timer}</p>
+                            </div>
+                            <button class="text-[8px] font-black text-indigo-600 border border-indigo-100 px-3 py-1.5 rounded-lg hover:bg-indigo-600 hover:text-white transition-all">VIEW FORM</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Tab Navigation
+        function showTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('tab-active', 'text-indigo-600'));
+            document.querySelectorAll('.nav-btn').forEach(el => el.classList.add('text-slate-400'));
+            
+            const activeBtn = document.getElementById(`btn-${tabId}`);
+            activeBtn.classList.add('tab-active');
+            activeBtn.classList.remove('text-slate-400');
+        }
+
+        // Generator Logic
+        function setDocType(name) {
+            currentDocType = name;
+            document.querySelectorAll('.doc-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-600', 'shadow-xl', 'scale-[1.02]');
+                btn.classList.add('bg-white', 'text-slate-500', 'border-slate-100');
+                if(btn.innerText.includes(name)) {
+                    btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-600', 'shadow-xl', 'scale-[1.02]');
+                    btn.classList.remove('bg-white', 'text-slate-500', 'border-slate-100');
+                }
+            });
+            document.getElementById('validation-box').classList.add('hidden');
+        }
+
+        function validateForm() {
+            const errors = [];
+            const invNo = document.getElementById('inp-inv-no').value;
+            const sGstin = document.getElementById('inp-seller-gst').value;
+            const bGstin = document.getElementById('inp-buyer-gst').value;
+            const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+
+            if(!invNo) errors.push("Rule 46a: Invoice Number is required for legal validity.");
+            if(invNo.length > 16) errors.push("Rule 46: Serial number should not exceed 16 characters.");
+            if(!gstinRegex.test(sGstin)) errors.push("Rule 10: Supplier GSTIN is invalid (Expected: 15 Chars, State Code + PAN + Entity).");
+            
+            const hsn = document.querySelector('.item-hsn').value;
+            if(!hsn || hsn.length < 4) errors.push("Rule 46g: HSN code missing or too short (Minimum 4 digits required for B2B).");
+
+            const errorList = document.getElementById('error-list');
+            errorList.innerHTML = '';
+            
+            if(errors.length > 0) {
+                errors.forEach(err => {
+                    errorList.innerHTML += `<li class="flex items-start gap-2"><span class="w-1.5 h-1.5 bg-rose-400 rounded-full mt-1.5 flex-shrink-0"></span> ${err}</li>`;
+                });
+                document.getElementById('validation-box').classList.remove('hidden');
+                document.getElementById('validation-box').classList.add('compliance-error');
+                setTimeout(() => document.getElementById('validation-box').classList.remove('compliance-error'), 500);
+                return false;
+            }
+            
+            document.getElementById('validation-box').classList.add('hidden');
+            return true;
+        }
+
+        function generateDoc(format) {
+            if(!validateForm()) return;
+            const btn = event.currentTarget;
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> GENERATING...`;
+            btn.disabled = true;
+
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+                const newEntry = {
+                    id: document.getElementById('inp-inv-no').value,
+                    client: `Verified GSTR Recipient`,
+                    date: new Date().toISOString().split('T')[0],
+                    amount: parseInt(document.getElementById('grand-total-display').innerText.replace('₹', '').replace(',', '')),
+                    status: 'Pending'
+                };
+                ledgerData.unshift(newEntry);
+                renderLedger();
+                alert(`${currentDocType} generated successfully in ${format} format.`);
+            }, 1500);
+        }
+
+        function updateTotals() {
+            let grand = 0;
+            document.querySelectorAll('#invoice-items tbody tr').forEach(tr => {
+                const qty = parseFloat(tr.querySelector('.item-qty').value) || 0;
+                const rate = parseFloat(tr.querySelector('.item-rate').value) || 0;
+                const gst = parseInt(tr.querySelector('.item-gst').value) || 0;
+                const lineTotal = (qty * rate) * (1 + (gst / 100));
+                tr.querySelector('.item-total').innerText = `₹${lineTotal.toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+                grand += lineTotal;
+            });
+            document.getElementById('grand-total-display').innerText = `₹${grand.toLocaleString()}`;
+        }
+
+        function renderDeadlines() {
+            const container = document.getElementById('deadline-container');
+            // Show only first 3 on dashboard
+            container.innerHTML = deadlines.slice(0, 3).map(dl => `
+                <div class="flex justify-between items-center p-5 bg-slate-50 rounded-2xl hover:shadow-lg transition-all border border-transparent hover:border-slate-100 cursor-pointer">
+                    <div><p class="font-black text-xs text-slate-800 uppercase tracking-tight">${dl.name}</p><p class="text-[10px] text-slate-400 font-bold">${new Date(dl.due).toLocaleDateString('en-IN')}</p></div>
+                    <span class="text-[9px] font-black text-indigo-600 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-100 uppercase tracking-widest">Details</span>
+                </div>
+            `).join('');
+        }
+
+        function renderLedger(filter = "") {
+            const tbody = document.querySelector('#ledger-table tbody');
+            const filtered = ledgerData.filter(d => d.client.toLowerCase().includes(filter.toLowerCase()) || d.id.toLowerCase().includes(filter.toLowerCase()));
+            tbody.innerHTML = filtered.map(row => `
+                <tr class="group hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0">
+                    <td class="py-6 px-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><i class="fas fa-file-invoice text-[10px]"></i></div>
+                            <span class="font-black text-xs text-slate-900">${row.id}</span>
+                        </div>
+                    </td>
+                    <td class="py-6">${row.client}</td>
+                    <td class="py-6 text-slate-400">${row.date}</td>
+                    <td class="py-6 text-right font-black">₹${row.amount.toLocaleString()}</td>
+                    <td class="py-6 text-center">
+                        <span class="px-4 py-1.5 rounded-xl text-[9px] uppercase tracking-widest ${row.status === 'Paid' ? 'bg-emerald-50 text-emerald-600' : row.status === 'Pending' ? 'bg-amber-50 text-amber-600' : 'bg-rose-50 text-rose-600'}">
+                            ${row.status}
+                        </span>
+                    </td>
+                    <td class="py-6 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button class="p-2 hover:text-indigo-600"><i class="fas fa-eye"></i></button>
+                        <button class="p-2 hover:text-emerald-600"><i class="fas fa-download"></i></button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderCirculars() {
+            const container = document.getElementById('circular-container');
+            container.innerHTML = circulars.map(c => `
+                <div class="group flex flex-col md:flex-row items-center justify-between p-8 bg-slate-50 rounded-[2.5rem] hover:bg-white hover:shadow-2xl transition-all border border-transparent hover:border-slate-100">
+                    <div class="flex items-center gap-8 flex-1">
+                        <div class="hidden lg:flex bg-white h-16 w-16 rounded-2xl border border-slate-100 group-hover:bg-slate-900 group-hover:text-white transition-all items-center justify-center">
+                            <i class="fas fa-file-signature text-xl"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="text-[9px] font-black uppercase px-3 py-1 rounded-full bg-indigo-50 text-indigo-600">${c.dept}</span>
+                                ${c.isNew ? '<span class="text-rose-500 text-[9px] font-black flex items-center gap-1"><span class="w-1.5 h-1.5 bg-rose-500 rounded-full animate-pulse"></span> LATEST</span>' : ''}
+                            </div>
+                            <h3 class="font-black text-slate-800 text-lg leading-tight group-hover:text-indigo-600 transition-colors">${c.title}</h3>
+                            <p class="text-[10px] text-slate-400 font-bold uppercase mt-2 tracking-widest">ID: ${c.id} • ${c.date}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-4 mt-6 md:mt-0">
+                        <button class="bg-white px-6 py-3 rounded-xl text-[9px] font-black border border-slate-200 hover:bg-slate-50">PREVIEW</button>
+                        <button class="bg-slate-900 text-white px-6 py-3 rounded-xl text-[9px] font-black hover:bg-indigo-600 shadow-lg shadow-slate-100">DOWNLOAD</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function syncCirculars() {
+            const btn = document.getElementById('sync-btn');
+            btn.innerHTML = `<i class="fas fa-sync-alt fa-spin"></i> CONNECTING...`;
+            btn.disabled = true;
+            setTimeout(() => {
+                circulars.unshift({
+                    id: `${Math.floor(Math.random()*100)}/2026`,
+                    title: 'New Notification: Revised Interest Rates on Late GST Payments',
+                    dept: 'Central Tax',
+                    date: new Date().toISOString().split('T')[0],
+                    isNew: true
+                });
+                renderCirculars();
+                btn.innerHTML = `<i class="fas fa-sync-alt"></i> SYNC DAILY CIRCULARS`;
+                btn.disabled = false;
+            }, 1500);
+        }
+
+        function filterLedger(val) { renderLedger(val); }
+
+        document.addEventListener('input', (e) => {
+            if(e.target.classList.contains('item-qty') || e.target.classList.contains('item-rate') || e.target.tagName === 'SELECT') {
+                updateTotals();
+            }
+        });
+
+        window.onload = () => {
+            renderDeadlines();
+            renderLedger();
+            renderCirculars();
+            updateTotals();
+            
+            // Start Notification Pulse
+            renderAllDeadlines();
+            setInterval(renderAllDeadlines, 1000);
+            
+            document.getElementById('notification-overlay').onclick = toggleNotifications;
+        }
+    </script>
 </body>
 </html>
