@@ -70,7 +70,6 @@
         .flashing-green { animation: pulse-green 1.5s infinite; }
         @keyframes pulse-green { 0%, 100% { color: #4ade80; } 50% { color: #22c55e; } }
 
-        /* Floating Flashing Pro Button Animation */
         @keyframes pro-flash {
             0% { box-shadow: 0 0 0 0 rgba(99, 102, 241, 0.7); transform: scale(1); }
             50% { box-shadow: 0 0 20px 10px rgba(99, 102, 241, 0); transform: scale(1.05); }
@@ -162,7 +161,6 @@
     </header>
 
     <main class="main-viewport px-4 md:px-8 space-y-8">
-        
         <!-- Stats -->
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
             <div class="glass p-6 rounded-[2rem] border-l-4 border-l-indigo-500">
@@ -218,9 +216,6 @@
                 <li class="flex items-center gap-3 text-[10px] font-bold text-slate-300 uppercase tracking-widest">
                     <i class="fa-solid fa-check text-indigo-500"></i> Priority Cloud Processing
                 </li>
-                <li class="flex items-center gap-3 text-[10px] font-bold text-slate-300 uppercase tracking-widest">
-                    <i class="fa-solid fa-check text-indigo-500"></i> Zero Expiry Latency
-                </li>
             </ul>
             <button onclick="handlePayment()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-2xl text-[11px] font-black uppercase tracking-[0.3em] text-white transition-all shadow-xl shadow-indigo-500/20">
                 Unlock Now for ₹1
@@ -273,10 +268,22 @@
     </div>
 
     <script type="module">
-        const BASE = "https://alertaiq.onrender.com/api/nodes"; 
+        const BASE = "https://alertai-q.vercel.app/api/nodes"; 
         
+        // ======================
+        // CORE UTILITIES
+        // ======================
         function getToken() { return localStorage.getItem("token"); }
         function isPremium() { return localStorage.getItem("isPremium") === "true"; }
+
+        function handleAuthError(res, data) {
+            if (res.status === 401 || res.status === 403) {
+                localStorage.removeItem("token");
+                window.location.href = "index.html";
+                return true;
+            }
+            return false;
+        }
 
         let activeNodes = [];
         let selectedCategory = null;
@@ -289,39 +296,34 @@
             { id: "util", name: "Utility", icon: "fa-bolt", services: ["Electric", "Water", "Gas", "WiFi", "Broadband", "Airtel", "Jio", "Rent", "Gym"] }
         ];
 
-        function getCountdown(expiry) {
-            const now = new Date().getTime();
-            const target = new Date(expiry).getTime();
-            const diff = target - now;
-            if (diff <= 0) return "EXPIRED";
-            const d = Math.floor(diff / (1000 * 60 * 60 * 24));
-            const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-            return `${d}d ${h}h ${m}m`;
-        }
-
+        // ======================
+        // BACKEND SYNC (ALIGNED)
+        // ======================
         async function syncNodes() {
             try {
-                const res = await fetch(`${BASE}`, {
+                const res = await fetch(`${BASE}/all`, {
                     method: "GET",
                     headers: { "Authorization": `Bearer ${getToken()}` }
                 });
-                const responseData = await res.json();
+                const data = await res.json();
+                
+                if (handleAuthError(res, data)) return;
+
                 if (res.ok) {
-                    activeNodes = responseData.data || [];
+                    activeNodes = data.data || data.nodes || data.result || [];
                     renderUI();
-                } else if (res.status === 401) {
-                    triggerLogout();
+                } else {
+                    showError(data.message || "Fetch failed");
                 }
             } catch (err) {
-                showError("Connection failed");
+                showError("Connection failed to Mainframe");
             }
         }
 
         async function pushNodeToCloud(node) {
             showOverlay("Creating Cluster...");
             try {
-                const res = await fetch(`${BASE}`, {
+                const res = await fetch(`${BASE}/create`, {
                     method: "POST",
                     headers: {
                         "Content-Type": "application/json",
@@ -329,16 +331,19 @@
                     },
                     body: JSON.stringify(node)
                 });
-                const responseData = await res.json();
+                const data = await res.json();
+
+                if (handleAuthError(res, data)) return null;
+
                 if (res.ok) {
                     await syncNodes(); 
-                    return responseData.data;
+                    return data.data || data.node || data;
                 } else {
-                    showError(responseData.error || "Failed to create node");
+                    showError(data.message || data.error || "Deployment failed");
                     return null;
                 }
             } catch (err) {
-                showError("Network Error");
+                showError("Network Outage");
                 return null;
             } finally {
                 hideOverlay();
@@ -346,21 +351,31 @@
         }
 
         async function deleteNodeFromCloud(id) {
-            showOverlay("Terminating...");
+            showOverlay("Terminating Node...");
             try {
-                const res = await fetch(`${BASE}/${id}`, {
+                const res = await fetch(`${BASE}/delete/${id}`, {
                     method: "DELETE",
                     headers: { "Authorization": `Bearer ${getToken()}` }
                 });
-                if (res.ok) await syncNodes();
+                const data = await res.json();
+
+                if (handleAuthError(res, data)) return;
+
+                if (res.ok) {
+                    await syncNodes();
+                } else {
+                    showError(data.message || "Termination failed");
+                }
+            } catch (err) {
+                showError("Request Interrupted");
             } finally {
                 hideOverlay();
             }
         }
 
-        // ==========================================
-        // RAZORPAY INTEGRATION
-        // ==========================================
+        // ======================
+        // PAYMENT & UI
+        // ======================
         window.handlePayment = () => {
             const options = {
                 "key": "rzp_test_yourkeyhere", 
@@ -369,35 +384,24 @@
                 "name": "AlertaiQ Premium",
                 "description": "Unlock Lifetime Unlimited Nodes",
                 "handler": async function (response) {
-                    const res = await fetch("https://alertaiq.onrender.com/api/payment/verify", {
+                    const res = await fetch("https://alertai-q.vercel.app/api/payment/verify", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
-                            "Authorization": `Bearer ${localStorage.getItem("token")}`
+                            "Authorization": `Bearer ${getToken()}`
                         },
                         body: JSON.stringify(response)
                     });
-
                     const data = await res.json();
-
                     if (data.success) {
                         localStorage.setItem("isPremium", "true");
-                        document.getElementById('premium-badge').classList.remove('hidden');
-                        document.getElementById('pro-banner').classList.add('hidden');
+                        renderUI(); // Refresh UI to show badge
                         closePremiumModal();
                         showOverlay("Premium Activated 🚀");
                         setTimeout(hideOverlay, 2000);
                     } else {
-                        showError("Payment verification failed");
+                        showError("Verification failed");
                     }
-                },
-                "prefill": {
-                    "name": "User",
-                    "email": "user@alertaiq.io",
-                    "contact": "9999999999"
-                },
-                "theme": {
-                    "color": "#6366f1"
                 }
             };
             const rzp = new Razorpay(options);
@@ -407,15 +411,28 @@
         window.openPremiumModal = () => document.getElementById('premium-modal').classList.remove('hidden');
         window.closePremiumModal = () => document.getElementById('premium-modal').classList.add('hidden');
 
+        function getCountdown(expiry) {
+            const target = new Date(expiry).getTime();
+            const diff = target - new Date().getTime();
+            if (diff <= 0) return "EXPIRED";
+            const d = Math.floor(diff / 86400000);
+            const h = Math.floor((diff % 86400000) / 3600000);
+            const m = Math.floor((diff % 3600000) / 60000);
+            return `${d}d ${h}h ${m}m`;
+        }
+
         function renderUI() {
             const list = document.getElementById('entity-list');
             list.innerHTML = '';
             let total = 0;
+            
             if (activeNodes.length === 0) {
                 list.innerHTML = `<div class="col-span-full py-20 text-center opacity-30 font-black tracking-widest text-xs uppercase">No Nodes Detected</div>`;
             }
+
             activeNodes.forEach(node => {
                 total += Number(node.amount || 0);
+                const id = node._id || node.id;
                 const card = document.createElement('div');
                 card.className = "glass p-8 rounded-[2.5rem] relative overflow-hidden group border border-white/5 hover:border-indigo-500/30 transition-all";
                 card.innerHTML = `
@@ -424,7 +441,7 @@
                             <p class="text-[8px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">${node.category}</p>
                             <h4 class="text-xl font-black text-white">${node.title}</h4>
                         </div>
-                        <button onclick="handleDelete('${node._id || node.id}')" class="w-10 h-10 rounded-xl bg-red-500/5 text-red-500/30 hover:bg-red-500 hover:text-white transition-all">
+                        <button onclick="handleDelete('${id}')" class="w-10 h-10 rounded-xl bg-red-500/5 text-red-500/30 hover:bg-red-500 hover:text-white transition-all">
                             <i class="fa-solid fa-trash-can text-xs"></i>
                         </button>
                     </div>
@@ -433,37 +450,20 @@
                     </div>
                     <div class="space-y-3">
                         <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-white/5">
-                            <span class="text-[10px] font-mono font-bold text-indigo-300 uppercase tracking-widest">Time: ${getCountdown(node.expiryDate)}</span>
+                            <span class="text-[10px] font-mono font-bold text-indigo-300 uppercase tracking-widest">TTL: ${getCountdown(node.expiryDate)}</span>
                         </div>
                     </div>
                 `;
                 list.appendChild(card);
             });
+
             document.getElementById('stat-count').innerText = activeNodes.length;
             document.getElementById('stat-capital').innerText = `₹${total.toLocaleString()}`;
             
-            // Sync badge and hide banner if premium
             if(isPremium()) {
                 document.getElementById('premium-badge').classList.remove('hidden');
                 document.getElementById('pro-banner').classList.add('hidden');
             }
-        }
-
-        function renderCategories() {
-            const grid = document.getElementById('category-grid');
-            grid.innerHTML = '';
-            SECTORS.forEach(s => {
-                const card = document.createElement('div');
-                card.className = "sector-card glass p-6 rounded-[1.8rem] flex flex-col items-center gap-3 transition-all hover:bg-indigo-600/10 cursor-pointer group";
-                card.onclick = () => openModal(s);
-                card.innerHTML = `
-                    <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-indigo-400">
-                        <i class="fa-solid ${s.icon} text-lg"></i>
-                    </div>
-                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">${s.name}</span>
-                `;
-                grid.appendChild(card);
-            });
         }
 
         window.openModal = (sector) => {
@@ -479,7 +479,7 @@
         };
 
         window.closeModal = () => document.getElementById('modal').classList.add('hidden');
-        window.handleDelete = async (id) => { if (confirm("Terminate?")) await deleteNodeFromCloud(id); };
+        window.handleDelete = async (id) => { if (confirm("Terminate Connection?")) await deleteNodeFromCloud(id); };
 
         document.getElementById('entity-form').onsubmit = async (e) => {
             e.preventDefault();
@@ -507,13 +507,13 @@
 
         function showOverlay(t) {
             document.getElementById('overlay-text').innerText = t;
-            const overlay = document.getElementById('global-overlay');
-            overlay.style.opacity = '1'; overlay.classList.remove('pointer-events-none');
+            document.getElementById('global-overlay').classList.replace('opacity-0', 'opacity-100');
+            document.getElementById('global-overlay').classList.remove('pointer-events-none');
         }
 
         function hideOverlay() {
-            const overlay = document.getElementById('global-overlay');
-            overlay.style.opacity = '0'; overlay.classList.add('pointer-events-none');
+            document.getElementById('global-overlay').classList.replace('opacity-100', 'opacity-0');
+            document.getElementById('global-overlay').classList.add('pointer-events-none');
         }
 
         function init3D() {
@@ -531,14 +531,37 @@
             camera.position.z = 5;
             function animate() { requestAnimationFrame(animate); starPoints.rotation.y += 0.0004; renderer.render(scene, camera); }
             animate();
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
         }
 
-        window.addEventListener('load', () => {
+        function renderCategories() {
+            const grid = document.getElementById('category-grid');
+            grid.innerHTML = '';
+            SECTORS.forEach(s => {
+                const card = document.createElement('div');
+                card.className = "sector-card glass p-6 rounded-[1.8rem] flex flex-col items-center gap-3 transition-all hover:bg-indigo-600/10 cursor-pointer group";
+                card.onclick = () => openModal(s);
+                card.innerHTML = `
+                    <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid ${s.icon} text-lg"></i>
+                    </div>
+                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500">${s.name}</span>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        window.onload = () => {
             init3D();
             renderCategories();
             syncNodes();
+            // Refresh countdowns every minute
             setInterval(renderUI, 60000);
-        });
+        };
     </script>
 </body>
 </html>
