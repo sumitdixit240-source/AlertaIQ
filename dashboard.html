@@ -174,9 +174,9 @@
             <div class="glass p-6 rounded-[2rem] flex items-center justify-between">
                 <div>
                     <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Network Status</p>
-                    <h3 class="text-xl font-black mt-1 text-emerald-500 italic">SECURE</h3>
+                    <h3 id="network-status-text" class="text-xl font-black mt-1 text-emerald-500 italic">SECURE</h3>
                 </div>
-                <i class="fa-solid fa-shield-halved text-emerald-500 text-2xl"></i>
+                <i id="network-status-icon" class="fa-solid fa-shield-halved text-emerald-500 text-2xl"></i>
             </div>
         </div>
 
@@ -253,7 +253,7 @@
                     </div>
                     <div class="space-y-3">
                         <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount (₹)</label>
-                        <input type="number" id="amount" required placeholder="0" class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-emerald-400 outline-none">
+                        <input type="number" id="amount" required placeholder="500" class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-emerald-400 outline-none">
                     </div>
                 </div>
                 <div class="space-y-3">
@@ -268,11 +268,9 @@
     </div>
 
     <script type="module">
+        // ALIGNED BASE URL - Ensuring correct path for Node Manager
         const BASE = "https://alertai-q.vercel.app/api/nodes"; 
         
-        // ======================
-        // CORE UTILITIES
-        // ======================
         function getToken() { return localStorage.getItem("token"); }
         function isPremium() { return localStorage.getItem("isPremium") === "true"; }
 
@@ -297,26 +295,31 @@
         ];
 
         // ======================
-        // BACKEND SYNC (ALIGNED)
+        // BACKEND SYNC (REPAIRED)
         // ======================
-        async function syncNodes() {
+        async function syncNodes(retries = 3) {
             try {
                 const res = await fetch(`${BASE}/all`, {
                     method: "GET",
                     headers: { "Authorization": `Bearer ${getToken()}` }
                 });
-                const data = await res.json();
                 
+                if (res.status === 404 || res.status >= 500) throw new Error("Server Outage");
+
+                const data = await res.json();
                 if (handleAuthError(res, data)) return;
 
                 if (res.ok) {
                     activeNodes = data.data || data.nodes || data.result || [];
+                    setNetworkStatus(true);
                     renderUI();
                 } else {
                     showError(data.message || "Fetch failed");
                 }
             } catch (err) {
-                showError("Connection failed to Mainframe");
+                if (retries > 0) return setTimeout(() => syncNodes(retries - 1), 2000);
+                setNetworkStatus(false);
+                showError("Network Outage: Unable to sync clusters");
             }
         }
 
@@ -337,13 +340,14 @@
 
                 if (res.ok) {
                     await syncNodes(); 
-                    return data.data || data.node || data;
+                    return true;
                 } else {
                     showError(data.message || data.error || "Deployment failed");
                     return null;
                 }
             } catch (err) {
-                showError("Network Outage");
+                setNetworkStatus(false);
+                showError("Network Outage: Deployment failed");
                 return null;
             } finally {
                 hideOverlay();
@@ -367,9 +371,23 @@
                     showError(data.message || "Termination failed");
                 }
             } catch (err) {
-                showError("Request Interrupted");
+                showError("Network Outage: Connection Interrupted");
             } finally {
                 hideOverlay();
+            }
+        }
+
+        function setNetworkStatus(isSecure) {
+            const text = document.getElementById('network-status-text');
+            const icon = document.getElementById('network-status-icon');
+            if (isSecure) {
+                text.innerText = "SECURE";
+                text.className = "text-xl font-black mt-1 text-emerald-500 italic";
+                icon.className = "fa-solid fa-shield-halved text-emerald-500 text-2xl";
+            } else {
+                text.innerText = "OUTAGE";
+                text.className = "text-xl font-black mt-1 text-red-500 italic";
+                icon.className = "fa-solid fa-triangle-exclamation text-red-500 text-2xl";
             }
         }
 
@@ -384,23 +402,27 @@
                 "name": "AlertaiQ Premium",
                 "description": "Unlock Lifetime Unlimited Nodes",
                 "handler": async function (response) {
-                    const res = await fetch("https://alertai-q.vercel.app/api/payment/verify", {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json",
-                            "Authorization": `Bearer ${getToken()}`
-                        },
-                        body: JSON.stringify(response)
-                    });
-                    const data = await res.json();
-                    if (data.success) {
-                        localStorage.setItem("isPremium", "true");
-                        renderUI(); // Refresh UI to show badge
-                        closePremiumModal();
-                        showOverlay("Premium Activated 🚀");
-                        setTimeout(hideOverlay, 2000);
-                    } else {
-                        showError("Verification failed");
+                    try {
+                        const res = await fetch("https://alertai-q.vercel.app/api/payment/verify", {
+                            method: "POST",
+                            headers: {
+                                "Content-Type": "application/json",
+                                "Authorization": `Bearer ${getToken()}`
+                            },
+                            body: JSON.stringify(response)
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                            localStorage.setItem("isPremium", "true");
+                            renderUI();
+                            closePremiumModal();
+                            showOverlay("Premium Activated 🚀");
+                            setTimeout(hideOverlay, 2000);
+                        } else {
+                            showError("Verification failed");
+                        }
+                    } catch (e) {
+                        showError("Payment sync failed");
                     }
                 }
             };
@@ -475,6 +497,12 @@
             document.getElementById('modal-sector-title').innerText = `Deploy ${sector.name}`;
             const sub = document.getElementById('title');
             sub.innerHTML = sector.services.map(s => `<option value="${s}">${s}</option>`).join('');
+            
+            // Set default date to today + 1 year
+            const future = new Date();
+            future.setFullYear(future.getFullYear() + 1);
+            document.getElementById('expiryDate').value = future.toISOString().slice(0, 16);
+            
             document.getElementById('modal').classList.remove('hidden');
         };
 
@@ -487,7 +515,7 @@
                 title: document.getElementById('title').value,
                 category: selectedCategory.name,
                 frequency: document.getElementById('frequency').value,
-                amount: Number(document.getElementById('amount').value),
+                amount: Number(document.getElementById('amount').value) || 500,
                 expiryDate: document.getElementById('expiryDate').value
             };
             const result = await pushNodeToCloud(node);
@@ -559,7 +587,6 @@
             init3D();
             renderCategories();
             syncNodes();
-            // Refresh countdowns every minute
             setInterval(renderUI, 60000);
         };
     </script>
