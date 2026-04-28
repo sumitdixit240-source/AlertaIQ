@@ -26,7 +26,7 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       minlength: 6,
-      select: false, // never return password
+      select: false,
     },
 
     role: {
@@ -41,7 +41,7 @@ const userSchema = new mongoose.Schema(
       default: false,
     },
 
-    // ================= PREMIUM SYSTEM (FIXED) =================
+    // ================= PREMIUM SYSTEM =================
     isPremium: {
       type: Boolean,
       default: false,
@@ -51,6 +51,23 @@ const userSchema = new mongoose.Schema(
       type: String,
       enum: ["free", "premium"],
       default: "free",
+    },
+
+    // 🆕 Premium expiry (IMPORTANT for SaaS)
+    premiumExpiresAt: {
+      type: Date,
+      default: null,
+    },
+
+    // ================= PAYMENT TRACKING =================
+    razorpayCustomerId: {
+      type: String,
+      default: null,
+    },
+
+    razorpayPaymentId: {
+      type: String,
+      default: null,
     },
 
     // ================= SECURITY TOKENS =================
@@ -65,16 +82,15 @@ const userSchema = new mongoose.Schema(
       default: null,
     },
 
-    // ================= PAYMENT TRACKING (OPTIONAL BUT USEFUL) =================
-    razorpayCustomerId: {
-      type: String,
-      default: null,
-    },
+    // 🆕 Password reset (future use)
+    resetPasswordToken: String,
+    resetPasswordExpires: Date,
   },
   {
     timestamps: true,
   }
 );
+
 
 // ================= PASSWORD HASHING =================
 userSchema.pre("save", async function (next) {
@@ -90,15 +106,28 @@ userSchema.pre("save", async function (next) {
   }
 });
 
+
 // ================= PASSWORD CHECK =================
 userSchema.methods.comparePassword = async function (enteredPassword) {
   return bcrypt.compare(enteredPassword, this.password);
 };
+
 
 // ================= LOGIN TRACKING =================
 userSchema.methods.updateLogin = function () {
   this.lastLogin = new Date();
   return this.save();
 };
+
+
+// ================= PREMIUM CHECK =================
+userSchema.methods.checkPremiumStatus = function () {
+  if (this.premiumExpiresAt && this.premiumExpiresAt < new Date()) {
+    this.isPremium = false;
+    this.plan = "free";
+  }
+  return this.isPremium;
+};
+
 
 module.exports = mongoose.model("User", userSchema);
