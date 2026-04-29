@@ -16,51 +16,46 @@ const createToken = (user) => {
       id: user._id,
       email: user.email,
       role: user.role,
-      isVerified: user.isVerified,
+      tokenVersion: user.tokenVersion,
     },
     process.env.JWT_SECRET,
     { expiresIn: "7d" }
   );
 };
 
-// ================= AUTH RESPONSE =================
+// ================= AUTH RESPONSE (FIXED FOR FRONTEND) =================
 const sendAuthResponse = (user, res, message = "Success") => {
   const token = createToken(user);
 
   return res.json({
     success: true,
     message,
-    token,
+    token,              // 🔥 IMPORTANT (FLAT)
     user: {
       id: user._id,
       name: user.name,
       email: user.email,
       role: user.role,
-      isVerified: user.isVerified,
     },
   });
 };
 
+//
 // ================= REGISTER =================
+//
 router.post("/register", async (req, res) => {
   try {
     let { name, email, password } = req.body || {};
 
     if (!name || !email || !password) {
-      return res.status(400).json({
-        success: false,
-        message: "All fields required",
-      });
+      return res.status(400).json({ success: false, message: "All fields required" });
     }
 
     email = email.toLowerCase().trim();
 
     const exists = await User.findOne({ email });
     if (exists) {
-      return res.status(409).json({
-        success: false,
-        message: "User already exists",
-      });
+      return res.status(409).json({ success: false, message: "User already exists" });
     }
 
     await User.create({
@@ -68,142 +63,91 @@ router.post("/register", async (req, res) => {
       email,
       password,
       role: "user",
-      isVerified: false,
       tokenVersion: 0,
+      isVerified: false,
     });
 
     return res.json({
       success: true,
       message: "Registered successfully",
     });
+
   } catch (err) {
     console.error(err);
-    return res.status(500).json({
-      success: false,
-      message: "Registration failed",
-    });
+    return res.status(500).json({ success: false, message: "Registration failed" });
   }
 });
 
+//
 // ================= SEND OTP =================
+//
 router.post("/send-otp", async (req, res) => {
   try {
     let { email } = req.body;
 
     if (!email) {
-      return res.status(400).json({
-        success: false,
-        message: "Email required",
-      });
+      return res.status(400).json({ success: false, message: "Email required" });
     }
 
     email = email.toLowerCase().trim();
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
-    }
-
-    // ⚡ prevent spam (basic protection)
-    const existingOtp = await OTP.findOne({ email });
-    if (existingOtp) {
-      return res.status(429).json({
-        success: false,
-        message: "OTP already sent. Try again later.",
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     const otp = generateOTP();
 
-    await OTP.create({
-      email,
-      otp,
-    });
+    await OTP.deleteMany({ email });
+    await OTP.create({ email, otp });
 
-    const mailResult = await sendMail({
-      to: email,
-      subject: "AlertAIQ OTP Verification",
-      html: `
-        <div style="font-family:Arial;padding:20px">
-          <h2>🔐 AlertAIQ Verification</h2>
-          <p>Your OTP is:</p>
-          <h1 style="color:#111">${otp}</h1>
-          <p>Valid for 5 minutes</p>
-        </div>
-      `,
-    });
-
-    if (!mailResult.success) {
-      return res.status(500).json({
-        success: false,
-        message: "Failed to send OTP email",
-      });
-    }
+    await sendMail(email, "Core.AI OTP", `<h2>OTP: ${otp}</h2>`);
 
     return res.json({
       success: true,
-      message: "OTP sent successfully",
+      message: "OTP sent",
     });
+
   } catch (err) {
     console.error(err);
-    return res.status(500).json({
-      success: false,
-      message: "OTP failed",
-    });
+    return res.status(500).json({ success: false, message: "OTP failed" });
   }
 });
 
+//
 // ================= VERIFY OTP =================
+//
 router.post("/verify-otp", async (req, res) => {
   try {
     let { email, otp } = req.body;
 
-    if (!email || !otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Email and OTP required",
-      });
-    }
-
     email = email.toLowerCase().trim();
 
     const record = await OTP.findOne({ email });
-
     if (!record) {
-      return res.status(400).json({
-        success: false,
-        message: "OTP not found or expired",
-      });
+      return res.status(400).json({ success: false, message: "OTP not found" });
     }
 
-    // ⚡ strict check
     if (record.otp !== otp) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP",
-      });
+      return res.status(400).json({ success: false, message: "Invalid OTP" });
     }
 
     await User.updateOne({ email }, { isVerified: true });
-
     await OTP.deleteMany({ email });
 
     const user = await User.findOne({ email });
 
     return sendAuthResponse(user, res, "OTP verified");
+
   } catch (err) {
     console.error(err);
-    return res.status(500).json({
-      success: false,
-      message: "Verification failed",
-    });
+    return res.status(500).json({ success: false, message: "Verification failed" });
   }
 });
 
-// ================= LOGIN =================
+//
+// ================= LOGIN (FIXED MAIN ISSUE) =================
+//
 router.post("/login", async (req, res) => {
   try {
     let { email, password } = req.body;
@@ -213,39 +157,31 @@ router.post("/login", async (req, res) => {
     const user = await User.findOne({ email }).select("+password");
 
     if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found",
-      });
+      return res.status(404).json({ success: false, message: "User not found" });
     }
 
     if (!user.isVerified) {
-      return res.status(403).json({
-        success: false,
-        message: "Verify OTP first",
-      });
+      return res.status(403).json({ success: false, message: "Verify OTP first" });
     }
 
     const ok = await user.comparePassword(password);
 
     if (!ok) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid password",
-      });
+      return res.status(400).json({ success: false, message: "Invalid password" });
     }
 
+    // 🔥 FIX: direct token return
     return sendAuthResponse(user, res, "Login successful");
+
   } catch (err) {
     console.error(err);
-    return res.status(500).json({
-      success: false,
-      message: "Login failed",
-    });
+    return res.status(500).json({ success: false, message: "Login failed" });
   }
 });
 
+//
 // ================= ME =================
+//
 router.get("/me", auth, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
@@ -254,11 +190,9 @@ router.get("/me", auth, async (req, res) => {
       success: true,
       user,
     });
+
   } catch (err) {
-    return res.status(500).json({
-      success: false,
-      message: "Failed to fetch user",
-    });
+    return res.status(500).json({ success: false, message: "Failed to fetch user" });
   }
 });
 
