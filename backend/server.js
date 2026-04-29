@@ -25,56 +25,81 @@ require("./services/crons");
 const app = express();
 const server = http.createServer(app);
 
-// ================= TRUST PROXY =================
+// ================= TRUST PROXY (RENDER FIX) =================
 app.set("trust proxy", 1);
 
-// ================= SECURITY =================
+// ================= SECURITY HEADERS =================
 app.use(
   helmet({
     crossOriginResourcePolicy: { policy: "cross-origin" },
   })
 );
 
-// ================= CORS =================
-const allowedOrigins = [
+// ================= CORS (SAFE + DEBUG FRIENDLY) =================
+const allowedOrigins = new Set([
   "https://alertai-q.vercel.app",
   "http://127.0.0.1:5500",
   "http://localhost:5500",
-];
+]);
 
 app.use(
   cors({
-    origin: function (origin, callback) {
+    origin: (origin, callback) => {
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.has(origin)) {
         return callback(null, true);
-      } else {
-        return callback(null, false);
       }
+
+      console.warn("🚫 CORS BLOCKED:", origin);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
 );
 
-// ================= PREFLIGHT FIX =================
-app.use((req, res, next) => {
-  if (req.method === "OPTIONS") return res.sendStatus(204);
-  next();
+// ================= HANDLE CORS ERRORS =================
+app.use((err, req, res, next) => {
+  if (err.message === "Not allowed by CORS") {
+    return res.status(403).json({
+      success: false,
+      message: "CORS blocked this request",
+    });
+  }
+  next(err);
 });
 
+// ================= PRE-FLIGHT =================
+app.options("*", cors());
+
 // ================= BODY PARSER =================
-app.use(express.json());
+app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
 
 // ================= SANITIZATION =================
-// FIX: removed xss-clean (caused Render crash)
 app.use(mongoSanitize());
+
+// ================= RATE LIMIT =================
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const authLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: "Too many login attempts, try again later",
+});
+
+app.use("/api", apiLimiter);
+app.use("/api/auth", authLimiter);
 
 // ================= SOCKET.IO =================
 const io = socketIo(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: Array.from(allowedOrigins),
     credentials: true,
   },
 });
@@ -85,7 +110,7 @@ io.on("connection", (socket) => {
   console.log("⚡ Socket Connected:", socket.id);
 
   socket.on("join", (userId) => {
-    if (userId && typeof userId === "string") {
+    if (typeof userId === "string" && userId.length > 0) {
       socket.join(userId);
     }
   });
@@ -95,22 +120,9 @@ io.on("connection", (socket) => {
   });
 });
 
-// ================= RATE LIMIT =================
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 100,
-});
-app.use("/api", limiter);
-
-const authLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000,
-  max: 10,
-});
-app.use("/api/auth", authLimiter);
-
-// ================= LOGGER =================
+// ================= REQUEST LOGGER =================
 app.use((req, res, next) => {
-  console.log(`${req.method} ${req.url}`);
+  console.log(`➡ ${req.method} ${req.originalUrl}`);
   next();
 });
 
@@ -123,35 +135,52 @@ app.use("/api/payment", paymentRoutes);
 // ================= HEALTH CHECK =================
 app.get("/", (req, res) => {
   res.json({
+    success: true,
     status: "🚀 AlertAIQ Running Secure Mode",
+    uptime: process.uptime(),
+    memory: process.memoryUsage().rss,
     time: new Date().toISOString(),
   });
 });
 
-// ================= 404 =================
+// ================= 404 HANDLER =================
 app.use((req, res) => {
-  res.status(404).json({ message: "Route not found" });
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+  });
 });
 
-// ================= ERROR HANDLER =================
+// ================= GLOBAL ERROR HANDLER =================
 app.use(errorMiddleware);
 
-// ================= START SERVER =================
+// ================= START SERVER SAFELY =================
 async function startServer() {
   try {
     console.log("🔄 Connecting to DB...");
+
     await connectDB();
+
     console.log("✅ DB Connected");
 
     const PORT = process.env.PORT || 5000;
 
-    server.listen(PORT, () => {
-      console.log(`🚀 Server running on ${PORT}`);
-      console.log("🔐 Security Enabled");
-      console.log("🌍 CORS Configured");
+    server.listen(PORT, "0.0.0.0", () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log("🔐 Security Layer Active");
+      console.log("🌍 CORS Protected");
     });
+
+    // Graceful shutdown (important for Render)
+    process.on("SIGTERM", () => {
+      console.log("🛑 SIGTERM received. Shutting down gracefully...");
+      server.close(() => {
+        process.exit(0);
+      });
+    });
+
   } catch (err) {
-    console.error("❌ DB ERROR:", err.message);
+    console.error("❌ CRITICAL STARTUP ERROR:", err.message);
     process.exit(1);
   }
 }
