@@ -15,11 +15,11 @@ const otpSchema = new mongoose.Schema(
       required: true,
     },
 
-    // ⏱ Auto-expire document after 5 minutes
+    // OTP creation time (TTL controlled here)
     createdAt: {
       type: Date,
       default: Date.now,
-      expires: 300,
+      expires: 300, // auto delete after 5 minutes
     },
   },
   {
@@ -27,10 +27,7 @@ const otpSchema = new mongoose.Schema(
   }
 );
 
-// 🔥 Index for faster email lookup
+// Fast lookup index
 otpSchema.index({ email: 1 });
-
-// 🔥 TTL index (backup explicit control as requested)
-otpSchema.index({ createdAt: 1 }, { expireAfterSeconds: 300 });
 
 module.exports = mongoose.model("OTP", otpSchema);
