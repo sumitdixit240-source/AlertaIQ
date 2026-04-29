@@ -2,88 +2,88 @@ const mongoose = require("mongoose");
 
 const alertSchema = new mongoose.Schema(
   {
-    // ================= USER =================
+    // ================= USER ISOLATION =================
     userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
+      index: true
     },
 
+    // ⚠️ Optional redundancy removed (email can be fetched via userId)
     email: {
       type: String,
-      required: true,
       lowercase: true,
-      trim: true,
-      index: true,
+      trim: true
     },
 
     // ================= ALERT DATA =================
     category: {
       type: String,
-      default: "General",
-      index: true,
+      default: null,
+      index: true
+    },
+
+    subCategory: {
+      type: String,
+      default: null
     },
 
     title: {
       type: String,
-      required: true,
-      trim: true,
+      default: "Alert"
+    },
+
+    description: {
+      type: String,
+      default: ""
     },
 
     amount: {
       type: Number,
-      default: 0,
+      default: 0
     },
 
-    expiryDate: {
+    expiry: {
       type: Date,
-      required: true,
-      index: true,
+      index: true
     },
 
-    // ================= FREQUENCY =================
+    // ================= SCHEDULING =================
     frequency: {
       type: String,
-      enum: ["one-time", "daily", "weekly", "monthly", "yearly"],
-      default: "one-time",
-      index: true,
+      enum: ["once", "daily", "weekly", "monthly"],
+      default: "once",
+      index: true
     },
 
-    // ================= CRON OPTIMIZATION =================
     lastSent: {
       type: Date,
-      default: null,
+      default: null
     },
 
-    nextRunAt: {
-      type: Date,
-      default: null,
-      index: true,
+    sentCount: {
+      type: Number,
+      default: 0
     },
 
     // ================= STATUS CONTROL =================
     status: {
       type: String,
-      enum: ["active", "paused"],
+      enum: ["active", "sent", "expired"],
       default: "active",
-      index: true,
-    },
-
-    reminderSent: {
-      type: Boolean,
-      default: false,
-    },
+      index: true
+    }
   },
   {
-    timestamps: true,
+    timestamps: true
   }
 );
 
-// ================= INDEXES =================
+
+// ================= PERFORMANCE INDEXES =================
 alertSchema.index({ userId: 1, createdAt: -1 });
-alertSchema.index({ userId: 1, expiryDate: 1 });
-alertSchema.index({ frequency: 1, nextRunAt: 1 });
-alertSchema.index({ status: 1, nextRunAt: 1 });
+alertSchema.index({ userId: 1, expiry: 1 });
+alertSchema.index({ status: 1, expiry: 1 });
 
 module.exports = mongoose.model("Alert", alertSchema);
