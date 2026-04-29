@@ -3,477 +3,503 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Core.AI | Premium Backend Node Manager</title>
+    <title>AlertaiQ - Smart Monitoring & Service Intelligence</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
         
         :root {
+            --bg-dark: #0a0c14;
+            --card-bg: rgba(15, 17, 26, 0.7);
             --accent: #6366f1;
-            --accent-glow: rgba(99, 102, 241, 0.3);
         }
 
-        body { 
-            font-family: 'Plus Jakarta Sans', sans-serif; 
-            background-color: #020617;
-            color: #f8fafc;
-            height: 100vh;
-            margin: 0;
-            overflow: hidden; 
-            display: flex;
-            flex-direction: column;
-        }
-
-        #bg-canvas {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: -1;
-            opacity: 0.6;
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #e2e8f0;
+            overflow-x: hidden;
         }
 
         .glass {
-            background: rgba(15, 23, 42, 0.7);
-            backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
 
-        .main-viewport {
-            flex: 1;
-            overflow-y: auto;
-            padding-bottom: 100px;
-            scrollbar-gutter: stable;
+        .node-row:hover {
+            background: rgba(255, 255, 255, 0.03);
+            transition: all 0.3s ease;
         }
-
-        .horizontal-scroll {
-            display: flex;
-            overflow-x: auto;
-            gap: 1rem;
-            padding-bottom: 1rem;
-            scrollbar-width: thin;
-            -webkit-overflow-scrolling: touch;
-        }
-
-        .horizontal-scroll::-webkit-scrollbar { height: 4px; }
-        .horizontal-scroll::-webkit-scrollbar-track { background: rgba(255,255,255,0.05); border-radius: 10px; }
-        .horizontal-scroll::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 10px; }
 
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.2); border-radius: 20px; border: 2px solid transparent; background-clip: content-box; }
-        ::-webkit-scrollbar-thumb:hover { background: #6366f1; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
 
-        .flashing-green { animation: pulse-green 1.5s infinite; }
-        @keyframes pulse-green { 0%, 100% { color: #4ade80; } 50% { color: #22c55e; } }
-
-        .loader-ring {
-            border: 4px solid rgba(99, 102, 241, 0.1);
-            border-left-color: #6366f1;
-            border-radius: 50%;
-            width: 45px; height: 45px;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .sector-card {
-            min-width: 130px;
-            flex-shrink: 0;
+        .success-toast {
+            animation: slideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
 
-        .error-toast {
-            position: fixed;
-            bottom: 24px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #ef4444;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 12px;
-            font-size: 12px;
+        @keyframes slideIn {
+            from { transform: translateX(120%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        .locked-badge {
+            font-size: 8px;
+            background: #f59e0b;
+            color: black;
+            padding: 1px 4px;
+            border-radius: 4px;
+            margin-left: 5px;
             font-weight: 800;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            z-index: 300;
-            display: none;
-            box-shadow: 0 10px 30px rgba(239, 68, 68, 0.3);
+        }
+
+        .unlocked-badge {
+            font-size: 8px;
+            background: #10b981;
+            color: white;
+            padding: 1px 4px;
+            border-radius: 4px;
+            margin-left: 5px;
+            font-weight: 800;
+        }
+        
+        .timer-badge {
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: -0.5px;
         }
     </style>
 </head>
-<body class="antialiased">
+<body class="min-h-screen">
 
-    <canvas id="bg-canvas"></canvas>
-    <div id="error-toast" class="error-toast"></div>
-
-    <!-- Loading Overlay -->
-    <div id="global-overlay" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[200] flex flex-col items-center justify-center transition-opacity duration-500 opacity-0 pointer-events-none">
-        <div class="loader-ring mb-4"></div>
-        <p id="overlay-text" class="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-400">Syncing with Mainframe...</p>
-    </div>
-
-    <!-- Header -->
-    <header class="glass m-4 md:m-6 rounded-[2.5rem] p-5 flex justify-between items-center z-50">
-        <div class="flex items-center gap-4">
-            <div class="w-12 h-12 bg-gradient-to-br from-indigo-600 to-blue-700 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20">
-                <i class="fa-solid fa-microchip text-xl text-white"></i>
-            </div>
-            <div>
-                <h2 class="text-xl font-black tracking-tighter">Core.AI</h2>
-                <p id="user-display" class="text-[9px] font-bold text-slate-500 uppercase tracking-widest">Unified Node Control</p>
-            </div>
+    <!-- Sidebar -->
+    <aside class="fixed left-0 top-0 h-full w-20 glass border-r border-white/5 flex flex-col items-center py-8 z-50">
+        <div class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-8">
+            <i class="fas fa-bolt text-white text-xl"></i>
         </div>
-        <button onclick="triggerLogout()" class="px-5 py-3 rounded-xl bg-slate-900/50 border border-slate-700/50 text-slate-400 hover:text-red-400 transition-all text-[10px] font-black uppercase tracking-widest">
-            <i class="fa-solid fa-power-off"></i>
+        <div class="flex-grow"></div>
+        <button onclick="promptLogout()" title="Logout" class="mt-auto w-10 h-10 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white transition-all flex items-center justify-center">
+            <i class="fas fa-sign-out-alt"></i>
         </button>
-    </header>
+    </aside>
 
-    <main class="main-viewport px-4 md:px-8 space-y-8">
-        
-        <!-- Stats -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 max-w-6xl mx-auto">
-            <div class="glass p-6 rounded-[2rem] border-l-4 border-l-indigo-500">
-                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Active Clusters</p>
-                <h3 id="stat-count" class="text-3xl font-black mt-1 text-white">0</h3>
-            </div>
-            <div class="glass p-6 rounded-[2rem]">
-                <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Global Allocation</p>
-                <h3 id="stat-capital" class="text-3xl font-black mt-1 text-indigo-400">₹0</h3>
-            </div>
-            <div class="glass p-6 rounded-[2rem] flex items-center justify-between">
-                <div>
-                    <p class="text-[9px] font-black text-slate-500 uppercase tracking-widest">Network Status</p>
-                    <h3 class="text-xl font-black mt-1 text-emerald-500 italic">SECURE</h3>
+    <main class="ml-20">
+        <!-- Top Navigation Bar -->
+        <header class="h-20 glass sticky top-0 px-8 flex items-center justify-between z-40">
+            <div class="flex items-center gap-6">
+                <h1 class="text-xl font-bold tracking-tight text-white">AlertaiQ <span class="text-indigo-500 font-normal">Command Center</span></h1>
+                <div class="hidden md:flex items-center gap-2 text-xs font-medium text-slate-400 border-l border-white/10 pl-6">
+                    <i class="far fa-clock"></i>
+                    <span id="current-time-display">00:00:00 AM | Loading...</span>
                 </div>
-                <i class="fa-solid fa-shield-halved text-emerald-500 text-2xl"></i>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <button onclick="toggleUpgradeModal(true)" class="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-orange-500/20 flex items-center gap-2">
+                    <i class="fas fa-crown"></i> Go Premium
+                </button>
+                <button onclick="openCreateModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 transition-all shadow-lg shadow-indigo-500/20">
+                    <i class="fas fa-plus"></i> Add New Node
+                </button>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-8 max-w-[1600px] mx-auto">
+            <!-- Stats -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="glass p-5 rounded-3xl">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-[10px] font-black uppercase text-slate-500">Total Nodes</span>
+                        <i class="fas fa-server text-indigo-400"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-white" id="stat-total">0</div>
+                </div>
+                <div class="glass p-5 rounded-3xl border-rose-500/20">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-[10px] font-black uppercase text-slate-500">Expiring Soon</span>
+                        <i class="fas fa-hourglass-half text-rose-400"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-rose-400" id="stat-alerts">0</div>
+                </div>
+                <div class="glass p-5 rounded-3xl border-emerald-500/20">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-[10px] font-black uppercase text-slate-500">Monthly Budget</span>
+                        <i class="fas fa-receipt text-emerald-400"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-emerald-400" id="stat-spent">₹0</div>
+                </div>
+                <div class="glass p-5 rounded-3xl">
+                    <div class="flex justify-between mb-2">
+                        <span class="text-[10px] font-black uppercase text-slate-500">Engine Status</span>
+                        <i class="fas fa-envelope text-blue-400"></i>
+                    </div>
+                    <div class="text-2xl font-bold text-white">Active</div>
+                </div>
+            </div>
+
+            <!-- Table -->
+            <div class="glass rounded-3xl overflow-hidden">
+                <div class="p-6 border-b border-white/5 flex items-center justify-between">
+                    <h3 class="font-bold flex items-center gap-2"><i class="fas fa-list-ul text-indigo-400"></i> Node Registry</h3>
+                    <span class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">Real-time Management</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left">
+                        <thead class="text-[10px] uppercase tracking-widest text-slate-500 border-b border-white/5">
+                            <tr>
+                                <th class="px-6 py-4">Node & Owner</th>
+                                <th class="px-6 py-4">Sector Detail</th>
+                                <th class="px-6 py-4">Amount</th>
+                                <th class="px-6 py-4">Frequency</th>
+                                <th class="px-6 py-4">Time Remaining</th>
+                                <th class="px-6 py-4 text-right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="node-table-body" class="divide-y divide-white/5">
+                            <tr id="empty-state">
+                                <td colspan="6" class="px-6 py-12 text-center">
+                                    <div class="flex flex-col items-center opacity-40">
+                                        <i class="fas fa-box-open text-4xl mb-4 text-slate-500"></i>
+                                        <p class="text-sm font-bold uppercase tracking-widest">No Active Nodes</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
-
-        <!-- Deployment Sectors -->
-        <section class="max-w-7xl mx-auto">
-            <div class="flex items-center gap-4 mb-4">
-                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Deploy Sector</h3>
-                <div class="h-px flex-grow bg-white/5"></div>
-            </div>
-            <div id="category-grid" class="horizontal-scroll"></div>
-        </section>
-
-        <!-- Active Clusters -->
-        <section class="max-w-7xl mx-auto space-y-6">
-            <div class="flex items-center gap-4">
-                <h3 class="text-[10px] font-black text-slate-500 uppercase tracking-[0.3em]">Operational Clusters</h3>
-                <div class="h-px flex-grow bg-white/5"></div>
-            </div>
-            <div id="entity-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
-        </section>
     </main>
 
-    <!-- Modal Form -->
-    <div id="modal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-2xl z-[150] hidden flex items-center justify-center p-4">
-        <div class="glass w-full max-w-lg rounded-[3rem] overflow-hidden flex flex-col shadow-2xl">
+    <!-- Create/Edit Modal -->
+    <div id="create-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 hidden">
+        <div class="absolute inset-0 bg-slate-950/95 backdrop-blur-md" onclick="toggleModal(false)"></div>
+        <div class="relative w-full max-w-4xl glass rounded-[2.5rem] shadow-2xl overflow-hidden">
             <div class="p-8 border-b border-white/5 bg-gradient-to-r from-indigo-600/10 to-transparent flex justify-between items-center">
-                <h3 id="modal-sector-title" class="text-2xl font-black tracking-tighter text-white">Initialize Node</h3>
-                <button onclick="closeModal()" class="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors">
-                    <i class="fa-solid fa-xmark text-white"></i>
-                </button>
+                <div>
+                    <h2 id="modal-title" class="text-2xl font-bold text-white">Provision New Node</h2>
+                    <p id="modal-desc" class="text-slate-400 text-sm">Deploy a tracking instance for your service</p>
+                </div>
+                <button onclick="toggleModal(false)" class="text-slate-500 hover:text-white transition-all"><i class="fas fa-times text-xl"></i></button>
             </div>
-            <form id="entity-form" class="p-8 space-y-6">
-                <div class="space-y-3">
-                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Provider Title</label>
-                    <select id="title" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none focus:border-indigo-500"></select>
+            
+            <form id="node-form" class="p-8 grid grid-cols-1 md:grid-cols-3 gap-6 max-h-[75vh] overflow-y-auto">
+                <input type="hidden" name="nodeId" id="edit-node-id">
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-black tracking-widest text-slate-500">User / Account Holder</label>
+                    <input type="text" name="ownerName" required placeholder="John Doe" class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none">
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div class="space-y-3">
-                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Cycle Frequency</label>
-                        <select id="frequency" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
-                            <option value="monthly">Monthly</option>
-                            <option value="quarterly">Quarterly</option>
-                            <option value="yearly">Yearly</option>
-                        </select>
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-black tracking-widest text-slate-500">Service Label</label>
+                    <input type="text" name="nodeName" required placeholder="e.g. Netflix / Gas Bill" class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none">
+                </div>
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-black tracking-widest text-slate-500">Billed Amount (₹)</label>
+                    <input type="number" name="amount" required placeholder="500" class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none text-emerald-400 font-bold">
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-black tracking-widest text-slate-500">Select Sector</label>
+                    <select name="sector" id="sector-select" onchange="updateSubServices()" class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none appearance-none">
+                        <option value="" disabled selected>Choose Sector...</option>
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-black tracking-widest text-slate-500">Sub-Service</label>
+                    <select name="subService" id="sub-service-select" class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none appearance-none">
+                        <option value="" disabled selected>Select Sector First</option>
+                    </select>
+                </div>
+
+                <div class="space-y-2">
+                    <label class="text-[10px] uppercase font-black tracking-widest text-slate-500">Expiry / Renewal Date</label>
+                    <input type="date" name="expiryDate" required class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none text-white">
+                </div>
+
+                <div class="space-y-2 md:col-span-2">
+                    <label class="text-[10px] uppercase font-black tracking-widest text-slate-500">Alert Endpoint (Email)</label>
+                    <input type="email" name="email" required placeholder="notify@domain.com" class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none">
+                </div>
+
+                <!-- Frequency Section -->
+                <div class="md:col-span-1 space-y-2">
+                    <label class="text-[10px] uppercase font-black tracking-widest text-slate-500">Notification Frequency</label>
+                    <div class="grid grid-cols-1 gap-2" id="frequency-list">
+                        <label class="flex items-center gap-3 p-2 glass rounded-xl border border-white/5 cursor-pointer">
+                            <input type="radio" name="frequency" value="Monthly" checked class="accent-indigo-500">
+                            <span class="text-[10px]">Monthly</span>
+                        </label>
+                        <label class="flex items-center gap-3 p-2 glass rounded-xl border border-white/5 cursor-pointer">
+                            <input type="radio" name="frequency" value="Yearly" class="accent-indigo-500">
+                            <span class="text-[10px]">Yearly</span>
+                        </label>
+                        <!-- Premium options -->
+                        <div id="freq-box-weekly" onclick="initiateRazorpay('Weekly')">
+                            <label class="flex items-center gap-3 p-2 glass rounded-xl border border-white/5 opacity-50 cursor-pointer group">
+                                <input type="radio" name="frequency" value="Weekly" disabled class="accent-indigo-500 pointer-events-none">
+                                <span class="text-[10px]">Weekly <span class="locked-badge group-hover:bg-amber-400 transition-colors">UNLOCK VIA RAZORPAY</span></span>
+                            </label>
+                        </div>
+                        <div id="freq-box-daily" onclick="initiateRazorpay('Daily')">
+                            <label class="flex items-center gap-3 p-2 glass rounded-xl border border-white/5 opacity-50 cursor-pointer group">
+                                <input type="radio" name="frequency" value="Daily" disabled class="accent-indigo-500 pointer-events-none">
+                                <span class="text-[10px]">Daily <span class="locked-badge group-hover:bg-amber-400 transition-colors">UNLOCK VIA RAZORPAY</span></span>
+                            </label>
+                        </div>
+                        <div id="freq-box-hourly" onclick="initiateRazorpay('Hourly')">
+                            <label class="flex items-center gap-3 p-2 glass rounded-xl border border-white/5 opacity-50 cursor-pointer group">
+                                <input type="radio" name="frequency" value="Hourly" disabled class="accent-indigo-500 pointer-events-none">
+                                <span class="text-[10px]">Hourly <span class="locked-badge group-hover:bg-amber-400 transition-colors">UNLOCK VIA RAZORPAY</span></span>
+                            </label>
+                        </div>
                     </div>
-                    <div class="space-y-3">
-                        <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Amount (₹)</label>
-                        <input type="number" id="amount" required placeholder="0" class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-emerald-400 outline-none">
-                    </div>
                 </div>
-                <div class="space-y-3">
-                    <label class="block text-[10px] font-black text-slate-500 uppercase tracking-widest">Renewal Date</label>
-                    <input type="date" id="expiryDate" required class="w-full bg-slate-900 border border-slate-700/50 rounded-xl px-5 py-4 font-bold text-slate-200 outline-none">
+
+                <div class="md:col-span-3 space-y-2">
+                    <label class="text-[10px] uppercase font-black tracking-widest text-slate-500">Deployment Notes</label>
+                    <textarea name="notes" rows="3" placeholder="Additional details..." class="w-full bg-slate-900/50 border border-white/10 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 focus:outline-none resize-none"></textarea>
                 </div>
-                <button type="submit" id="submit-btn" class="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-xl text-[11px] font-black uppercase tracking-[0.3em] text-white transition-all active:scale-95">
-                    Deploy to Cloud
-                </button>
+
+                <div class="md:col-span-3 pt-6 flex gap-4">
+                    <button type="button" onclick="toggleModal(false)" class="flex-1 px-6 py-4 rounded-xl border border-white/10 font-bold hover:bg-white/5 transition-all text-sm uppercase tracking-widest">Abort</button>
+                    <button type="submit" id="submit-btn" class="flex-[2] bg-indigo-600 hover:bg-indigo-500 text-white px-8 py-4 rounded-xl font-bold shadow-xl shadow-indigo-500/20 transition-all active:scale-95 text-sm uppercase tracking-widest">Deploy Node</button>
+                </div>
             </form>
         </div>
     </div>
 
-    <script type="module">
-        // ==========================================
-        // 1. API CONFIG (FIXED FOR BACKEND ROUTES)
-        // ==========================================
-        const BASE = "https://alertaiq.onrender.com/api/nodes"; // Mount point
-        
-        function getToken() {
-            return localStorage.getItem("token");
-        }
+    <!-- Notification Zone -->
+    <div id="notification-zone" class="fixed bottom-8 right-8 z-[200] w-96 space-y-4"></div>
 
-        // ==========================================
-        // 2. GLOBAL STATE & DICTIONARY
-        // ==========================================
-        let activeNodes = [];
-        let selectedCategory = null;
+    <script>
+        const API = "http://localhost:5000/api";
 
-        const SECTORS = [
-            { id: "saas", name: "SaaS", icon: "fa-cloud", services: ["Adobe", "Slack", "Zoom", "Office 365", "Figma", "Canva", "Notion", "Dropbox", "ChatGPT Plus", "Midjourney"] },
-            { id: "dev", name: "Build", icon: "fa-code", services: ["Vercel", "GitHub", "AWS", "DigitalOcean", "Supabase", "MongoDB", "Postman", "Cloudflare", "Clerk"] },
-            { id: "fin", name: "Finance", icon: "fa-wallet", services: ["Stripe", "PayPal", "Amex", "HDFC", "SBI", "Robinhood", "Zerodha", "Groww", "ICICI Bank"] },
-            { id: "stream", name: "Media", icon: "fa-film", services: ["Netflix", "Spotify", "Apple TV", "Prime Video", "Hulu", "Disney+", "YouTube Premium", "Crunchyroll"] },
-            { id: "util", name: "Utility", icon: "fa-bolt", services: ["Electric", "Water", "Gas", "WiFi", "Broadband", "Airtel", "Jio", "Rent", "Gym"] }
-        ];
-
-        // ==========================================
-        // 3. CLOUD OPERATIONS (STRICT RESPONSE DATA HANDLING)
-        // ==========================================
-        
-        async function syncNodes() {
-            try {
-                const res = await fetch(`${BASE}`, {
-                    method: "GET",
-                    headers: { "Authorization": `Bearer ${getToken()}` }
-                });
-                
-                const responseData = await res.json();
-                
-                if (res.ok) {
-                    // FIX: Backend returns { success: true, data: [...] }
-                    activeNodes = responseData.data || [];
-                    renderUI();
-                } else if (res.status === 401) {
-                    triggerLogout();
-                }
-            } catch (err) {
-                console.error("Fetch Nodes Error:", err);
-                showError("Connection failed");
-            }
-        }
-
-        async function pushNodeToCloud(node) {
-            showOverlay("Creating Cluster...");
-            try {
-                const res = await fetch(`${BASE}`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${getToken()}`
-                    },
-                    body: JSON.stringify(node)
-                });
-                
-                const responseData = await res.json();
-                
-                if (res.ok) {
-                    await syncNodes(); 
-                    return responseData.data;
-                } else {
-                    // Handle specific error messages from your backend
-                    showError(responseData.error || "Failed to create node");
-                    return null;
-                }
-            } catch (err) {
-                showError("Network Error");
-                return null;
-            } finally {
-                hideOverlay();
-            }
-        }
-
-        async function deleteNodeFromCloud(id) {
-            showOverlay("Terminating Cluster...");
-            try {
-                const res = await fetch(`${BASE}/${id}`, {
-                    method: "DELETE",
-                    headers: { "Authorization": `Bearer ${getToken()}` }
-                });
-                
-                if (res.ok) {
-                    await syncNodes();
-                } else {
-                    const data = await res.json();
-                    showError(data.error || "Delete failed");
-                }
-            } catch (err) {
-                showError("Delete Error");
-            } finally {
-                hideOverlay();
-            }
-        }
-
-        // ==========================================
-        // 4. UI RENDERING
-        // ==========================================
-        function renderUI() {
-            const list = document.getElementById('entity-list');
-            list.innerHTML = '';
-            let total = 0;
-
-            if (activeNodes.length === 0) {
-                list.innerHTML = `<div class="col-span-full py-20 text-center opacity-30 font-black tracking-widest text-xs uppercase">No Nodes Detected In This Sector</div>`;
-            }
-
-            activeNodes.forEach(node => {
-                total += Number(node.amount || 0);
-                const card = document.createElement('div');
-                card.className = "glass p-8 rounded-[2.5rem] relative overflow-hidden group border border-white/5 hover:border-indigo-500/30 transition-all";
-                
-                // Flexible ID handling (MongoDB _id)
-                const nodeId = node._id || node.id;
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-start mb-6">
-                        <div>
-                            <p class="text-[8px] font-black text-indigo-500 uppercase tracking-[0.2em] mb-1">${node.category || 'Node'}</p>
-                            <h4 class="text-xl font-black text-white">${node.title}</h4>
-                        </div>
-                        <button onclick="handleDelete('${nodeId}')" class="w-10 h-10 rounded-xl bg-red-500/5 text-red-500/30 hover:bg-red-500 hover:text-white transition-all">
-                            <i class="fa-solid fa-trash-can text-xs"></i>
-                        </button>
-                    </div>
-                    <p class="text-3xl font-black flashing-green mb-6">₹${Number(node.amount || 0).toLocaleString()}</p>
-                    <div class="space-y-3">
-                        <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-white/5">
-                            <div class="flex items-center gap-2">
-                                <i class="fa-solid fa-repeat text-slate-500 text-[10px]"></i>
-                                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">${node.frequency || 'Monthly'}</span>
-                            </div>
-                        </div>
-                        <div class="flex items-center justify-between p-4 bg-slate-900/50 rounded-2xl border border-white/5">
-                            <div class="flex items-center gap-2">
-                                <i class="fa-solid fa-calendar-day text-indigo-500 text-[10px]"></i>
-                                <span class="text-[10px] font-mono font-bold text-slate-300">${new Date(node.expiryDate).toLocaleDateString()}</span>
-                            </div>
-                            <span class="text-[8px] font-black text-slate-500 uppercase tracking-widest">Active Node</span>
-                        </div>
-                    </div>
-                `;
-                list.appendChild(card);
-            });
-
-            document.getElementById('stat-count').innerText = activeNodes.length;
-            document.getElementById('stat-capital').innerText = `₹${total.toLocaleString()}`;
-        }
-
-        function renderCategories() {
-            const grid = document.getElementById('category-grid');
-            grid.innerHTML = '';
-            SECTORS.forEach(s => {
-                const card = document.createElement('div');
-                card.className = "sector-card glass p-6 rounded-[1.8rem] flex flex-col items-center gap-3 transition-all hover:bg-indigo-600/10 cursor-pointer group active:scale-95";
-                card.onclick = () => openModal(s);
-                card.innerHTML = `
-                    <div class="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-indigo-400 group-hover:scale-110 transition-transform">
-                        <i class="fa-solid ${s.icon} text-lg"></i>
-                    </div>
-                    <span class="text-[9px] font-black uppercase tracking-widest text-slate-500 group-hover:text-indigo-300 text-center">${s.name}</span>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        // ==========================================
-        // 5. INTERACTION HANDLERS
-        // ==========================================
-        window.openModal = (sector) => {
-            selectedCategory = sector;
-            document.getElementById('modal-sector-title').innerText = `Deploy ${sector.name}`;
-            const sub = document.getElementById('title');
-            sub.innerHTML = sector.services.map(s => `<option value="${s}">${s}</option>`).join('');
-            document.getElementById('modal').classList.remove('hidden');
+        const SECTORS_DATA = {
+            "Streaming & Entertainment": ["Amazon Prime Video", "Disney+ Hotstar", "Netflix Premium", "YouTube Premium", "Spotify Family", "Apple Music", "Zee5", "SonyLIV", "JioCinema Pro", "Crunchyroll"],
+            "Mobile & Telecom": ["Jio Prepaid/Postpaid", "Airtel Fiber", "Vi Max", "BSNL Broadband", "Data Add-on Packs", "Roaming Services"],
+            "Utility Bills": ["Electricity (State Board)", "Piped Gas (IGL/MGL)", "Water Tax", "Municipal Property Tax", "Waste Management Fees"],
+            "Finance & Banking": ["Credit Card Dues", "Home Loan EMI", "Car Loan EMI", "Personal Loan", "Mutual Fund SIP", "Stock Portfolio Alerts"],
+            "Insurance Services": ["Life Insurance (LIC)", "Health Insurance", "Vehicle Insurance", "Term Insurance", "Home Insurance"],
+            "Education & Learning": ["School/College Fees", "Coursera/Udemy", "Skillshare", "Masterclass", "Educational Coaching", "Byju's Subscription"],
+            "Lifestyle & Health": ["Cult.fit Membership", "Gym Fees", "Apollo 24|7 Circle", "PharmEasy Plus", "SkinCare Subscriptions"],
+            "E-Commerce & Delivery": ["Amazon Prime Membership", "Flipkart VIP", "Zomato Gold", "Swiggy One", "BigBasket BBNow"],
+            "Gaming & Software": ["PlayStation Plus", "Xbox Game Pass", "Adobe Creative Cloud", "Microsoft 365", "ChatGPT Plus", "Canva Pro"],
+            "IT & Cloud Infrastructure": ["AWS Billing", "Google Cloud", "Azure Nodes", "Domain Renewals (GoDaddy)", "SaaS API Usage"],
+            "Transport & Travel": ["Fastag Recharge", "Metro Smart Card", "Uber Pass", "Ola Select", "Airline Loyalty Renewal"],
+            "Housing & Real Estate": ["Maintenance Charges", "House Rent", "Society Club Fees", "Security Service Dues"],
+            "News & Publications": ["The Hindu/TOI Digital", "Wall Street Journal", "Medium Membership", "Substack Newsletters"],
+            "Professional Services": ["LinkedIn Premium", "Legal Retainers", "Accounting Fees", "Freelance Tool Subs"],
+            "Charity & Giving": ["Monthly NGO Donation", "Patreon Support", "Temple/Church Tithe", "Ketto Fundraisers"],
+            "Pet Care": ["Vet Consultation", "Pet Food Subscription", "Dog Training Fees", "Pet Insurance"],
+            "Auto Maintenance": ["Vehicle Service Due", "RSA Membership", "EV Charging Credits", "Pollution (PUC) Alerts"],
+            "Home Improvement": ["RO Service AMC", "AC Maintenance", "Pest Control Schedule", "Gardening Service"],
+            "Security & Safety": ["CCTV Cloud Storage", "MyGate/NoBrokerHood", "Antivirus Renewal", "Safe Deposit Locker"],
+            "Gifting & Events": ["Birthday Reminders", "Anniversary Flowers", "Club Memberships", "Event Tickets (BookMyShow)"]
         };
 
-        window.closeModal = () => document.getElementById('modal').classList.add('hidden');
-        
-        window.handleDelete = async (id) => {
-            if (confirm("Terminate cluster node?")) {
-                await deleteNodeFromCloud(id);
-            }
-        };
+        let nodes = [];
 
-        document.getElementById('entity-form').onsubmit = async (e) => {
+        function updateClock() {
+            const clockEl = document.getElementById('current-time-display');
+            if (clockEl) clockEl.innerText = new Date().toLocaleString();
+        }
+
+        function toggleModal(show) {
+            document.getElementById('create-modal').classList.toggle('hidden', !show);
+        }
+
+        function openCreateModal() {
+            document.getElementById('node-form').reset();
+            document.getElementById('edit-node-id').value = '';
+            document.getElementById('modal-title').innerText = "Provision New Node";
+            document.getElementById('submit-btn').innerText = "Deploy Node";
+            populateSectors();
+            toggleModal(true);
+        }
+
+        function populateSectors() {
+            const select = document.getElementById('sector-select');
+            select.innerHTML = '<option value="" disabled selected>Choose Sector...</option>' + 
+                Object.keys(SECTORS_DATA).sort().map(s => `<option value="${s}">${s}</option>`).join('');
+        }
+
+        function updateSubServices() {
+            const sector = document.getElementById('sector-select').value;
+            const subSelect = document.getElementById('sub-service-select');
+            if (SECTORS_DATA[sector]) {
+                subSelect.innerHTML = SECTORS_DATA[sector].map(s => `<option value="${s}">${s}</option>`).join('');
+            }
+        }
+
+        // --- BACKEND INTEGRATION ---
+
+        document.getElementById("node-form").onsubmit = async (e) => {
             e.preventDefault();
-            // Sending keys that match your backend's primary verification
-            const node = {
-                title: document.getElementById('title').value,
-                category: selectedCategory.name,
-                frequency: document.getElementById('frequency').value,
-                amount: Number(document.getElementById('amount').value),
-                expiryDate: document.getElementById('expiryDate').value
+            const token = localStorage.getItem("token");
+            const fd = new FormData(e.target);
+
+            const payload = {
+                nodeName: fd.get("nodeName"),
+                ownerName: fd.get("ownerName"),
+                amount: fd.get("amount"),
+                sector: fd.get("sector"),
+                subService: fd.get("subService"),
+                frequency: fd.get("frequency"),
+                expiryDate: fd.get("expiryDate"),
+                email: fd.get("email"),
+                notes: fd.get("notes")
             };
-            const result = await pushNodeToCloud(node);
-            if (result) closeModal();
-        };
 
-        window.triggerLogout = () => {
-            localStorage.removeItem("token");
-            window.location.href = "index.html"; 
-        };
-
-        function showError(msg) {
-            const toast = document.getElementById('error-toast');
-            toast.innerText = msg;
-            toast.style.display = 'block';
-            setTimeout(() => { toast.style.display = 'none'; }, 5000);
-        }
-
-        function showOverlay(t) {
-            document.getElementById('overlay-text').innerText = t;
-            const overlay = document.getElementById('global-overlay');
-            overlay.style.opacity = '1';
-            overlay.classList.remove('pointer-events-none');
-        }
-
-        function hideOverlay() {
-            const overlay = document.getElementById('global-overlay');
-            overlay.style.opacity = '0';
-            overlay.classList.add('pointer-events-none');
-        }
-
-        // ==========================================
-        // 6. INITIALIZATION
-        // ==========================================
-        function init3D() {
-            const canvas = document.getElementById('bg-canvas');
-            const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-            const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            
-            const stars = new THREE.BufferGeometry();
-            const pos = new Float32Array(3000);
-            for(let i=0; i<3000; i++) pos[i] = (Math.random() - 0.5) * 50;
-            stars.setAttribute('position', new THREE.BufferAttribute(pos, 3));
-            const starMat = new THREE.PointsMaterial({ size: 0.04, color: 0x6366f1, transparent: true, opacity: 0.4 });
-            const starPoints = new THREE.Points(stars, starMat);
-            scene.add(starPoints);
-            
-            camera.position.z = 5;
-            function animate() {
-                requestAnimationFrame(animate);
-                starPoints.rotation.y += 0.0004;
-                renderer.render(scene, camera);
-            }
-            animate();
-            window.addEventListener('resize', () => {
-                camera.aspect = window.innerWidth / window.innerHeight;
-                camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
+            const res = await fetch(`${API}/alerts`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token
+                },
+                body: JSON.stringify(payload)
             });
+
+            const data = await res.json();
+
+            if (res.ok) {
+                alert("✅ Node created. Check your email.");
+                location.reload();
+            } else {
+                alert(data.msg || "Creation failed");
+            }
+        };
+
+        async function loadNodes() {
+            const token = localStorage.getItem("token");
+            if (!token) return;
+
+            try {
+                const res = await fetch(`${API}/alerts`, {
+                    headers: { Authorization: token }
+                });
+                const data = await res.json();
+                nodes = Array.isArray(data) ? data : [];
+                renderNodes();
+            } catch (err) {
+                console.error("Failed to load nodes", err);
+            }
         }
 
-        window.addEventListener('load', () => {
-            init3D();
-            renderCategories();
-            syncNodes();
-        });
+        // --- RAZORPAY INTEGRATION ---
+
+        async function initiateRazorpay(freq) {
+            const token = localStorage.getItem("token");
+
+            const res = await fetch(`${API}/payment/create-order`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token
+                },
+                body: JSON.stringify({ freq })
+            });
+
+            const data = await res.json();
+
+            const options = {
+                key: "YOUR_RAZORPAY_KEY", // Replace with actual key
+                amount: data.order.amount,
+                currency: "INR",
+                name: "AlertaiQ",
+                description: `Unlock ${freq}`,
+                order_id: data.order.id,
+                handler: async function (response) {
+                    await verifyPayment(response, freq);
+                },
+                theme: { color: "#6366f1" }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.open();
+        }
+
+        async function verifyPayment(resData, freq) {
+            const token = localStorage.getItem("token");
+
+            const res = await fetch(`${API}/payment/verify`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: token
+                },
+                body: JSON.stringify({
+                    ...resData,
+                    freq
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                alert("✅ Unlocked Successfully");
+                location.reload();
+            } else {
+                alert("Payment Verification Failed");
+            }
+        }
+
+        // --- RENDER LOGIC ---
+
+        function renderNodes() {
+            const tableBody = document.getElementById('node-table-body');
+            const emptyState = document.getElementById('empty-state');
+            let totalAmt = 0;
+
+            const existingRows = tableBody.querySelectorAll('.node-row');
+            existingRows.forEach(r => r.remove());
+
+            if (!nodes || nodes.length === 0) {
+                emptyState.style.display = 'table-row';
+                document.getElementById('stat-total').innerText = '0';
+                document.getElementById('stat-spent').innerText = '₹0';
+                return;
+            }
+
+            emptyState.style.display = 'none';
+            nodes.forEach(node => {
+                totalAmt += parseFloat(node.amount || 0);
+                const expiry = new Date(node.expiryDate);
+                
+                const tr = document.createElement('tr');
+                tr.className = 'node-row';
+                tr.innerHTML = `
+                    <td class="px-6 py-4">
+                        <div class="text-sm font-bold text-white">${node.nodeName}</div>
+                        <div class="text-[10px] text-slate-500">${node.ownerName}</div>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="text-[10px] font-bold text-indigo-400 uppercase">${node.sector}</div>
+                        <div class="text-[10px] text-slate-500">${node.subService}</div>
+                    </td>
+                    <td class="px-6 py-4 text-emerald-400 font-bold">₹${node.amount}</td>
+                    <td class="px-6 py-4"><span class="text-[9px] font-black bg-indigo-500/10 px-2 py-1 rounded text-indigo-400 uppercase">${node.frequency}</span></td>
+                    <td class="px-6 py-4 text-xs text-slate-300 font-mono">${expiry.toLocaleDateString()}</td>
+                    <td class="px-6 py-4 text-right">
+                        <button class="text-slate-500 hover:text-white"><i class="fas fa-ellipsis-v"></i></button>
+                    </td>
+                `;
+                tableBody.appendChild(tr);
+            });
+
+            document.getElementById('stat-total').innerText = nodes.length;
+            document.getElementById('stat-spent').innerText = '₹' + totalAmt.toLocaleString();
+        }
+
+        window.onload = () => {
+            updateClock();
+            loadNodes();
+            setInterval(updateClock, 1000);
+        };
     </script>
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </body>
 </html>
