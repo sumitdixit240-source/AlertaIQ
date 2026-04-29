@@ -9,7 +9,9 @@ const auth = require("../middleware/authMiddleware");
 // ================= GET USER NODES =================
 router.get("/", auth, async (req, res) => {
   try {
-    const nodes = await Node.find({ userId: req.user.id })
+    const userId = req.user;
+
+    const nodes = await Node.find({ userId })
       .sort({ createdAt: -1 });
 
     return res.json({
@@ -19,6 +21,7 @@ router.get("/", auth, async (req, res) => {
 
   } catch (err) {
     console.error("GET NODES ERROR:", err.message);
+
     return res.status(500).json({
       success: false,
       error: "Failed to fetch nodes"
@@ -43,13 +46,14 @@ router.post("/", auth, async (req, res) => {
       expiryDate
     } = req.body || {};
 
+    const userId = req.user;
+
     const finalCategory = category || cat;
     const finalTitle = title || sub;
     const finalFreq = frequency || freq;
     const finalAmount = amount ?? amt;
     const finalExpiry = expiryDate || expiry;
 
-    // validation
     if (!finalCategory || !finalTitle || !finalFreq || finalAmount == null || !finalExpiry) {
       return res.status(400).json({
         success: false,
@@ -57,8 +61,8 @@ router.post("/", auth, async (req, res) => {
       });
     }
 
-    // user check
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(userId);
+
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -66,8 +70,7 @@ router.post("/", auth, async (req, res) => {
       });
     }
 
-    // free plan limit
-    const count = await Node.countDocuments({ userId: req.user.id });
+    const count = await Node.countDocuments({ userId });
 
     if (!user.isPro && count >= 2) {
       return res.status(403).json({
@@ -76,9 +79,8 @@ router.post("/", auth, async (req, res) => {
       });
     }
 
-    // create node (clean + controlled fields only)
     const node = await Node.create({
-      userId: req.user.id,
+      userId,
       category: finalCategory,
       title: finalTitle,
       frequency: finalFreq,
@@ -94,6 +96,7 @@ router.post("/", auth, async (req, res) => {
 
   } catch (err) {
     console.error("CREATE NODE ERROR:", err.message);
+
     return res.status(500).json({
       success: false,
       error: "Failed to create node"
@@ -102,9 +105,11 @@ router.post("/", auth, async (req, res) => {
 });
 
 
-// ================= UPDATE NODE (SAFE VERSION) =================
+// ================= UPDATE NODE =================
 router.put("/:id", auth, async (req, res) => {
   try {
+    const userId = req.user;
+
     const allowedFields = [
       "category",
       "title",
@@ -124,7 +129,7 @@ router.put("/:id", auth, async (req, res) => {
     const node = await Node.findOneAndUpdate(
       {
         _id: req.params.id,
-        userId: req.user.id
+        userId
       },
       { $set: updateData },
       { new: true }
@@ -144,6 +149,7 @@ router.put("/:id", auth, async (req, res) => {
 
   } catch (err) {
     console.error("UPDATE ERROR:", err.message);
+
     return res.status(500).json({
       success: false,
       error: "Update failed"
@@ -155,9 +161,11 @@ router.put("/:id", auth, async (req, res) => {
 // ================= DELETE NODE =================
 router.delete("/:id", auth, async (req, res) => {
   try {
+    const userId = req.user;
+
     const node = await Node.findOneAndDelete({
       _id: req.params.id,
-      userId: req.user.id
+      userId
     });
 
     if (!node) {
@@ -175,6 +183,7 @@ router.delete("/:id", auth, async (req, res) => {
 
   } catch (err) {
     console.error("DELETE ERROR:", err.message);
+
     return res.status(500).json({
       success: false,
       error: "Delete failed"
