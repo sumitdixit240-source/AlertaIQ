@@ -7,7 +7,7 @@ const transporter = nodemailer.createTransport({
   secure: true,
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS, // Gmail App Password (NOT normal password)
+    pass: process.env.EMAIL_PASS, // Gmail App Password
   },
   tls: {
     rejectUnauthorized: false,
@@ -16,41 +16,34 @@ const transporter = nodemailer.createTransport({
   socketTimeout: 10000,
 });
 
-// ================= VERIFY CONNECTION =================
-(async () => {
-  try {
-    await transporter.verify();
-    console.log("✅ Core.AI Mailer Ready");
-  } catch (err) {
-    console.log("❌ Mailer Error:", err.message);
-  }
-})();
+// ================= VERIFY =================
+transporter.verify()
+  .then(() => console.log("✅ Mailer ready"))
+  .catch((err) => console.log("❌ Mailer error:", err.message));
 
-// ================= CORE MAIL FUNCTION =================
-const sendMail = async ({ to, subject, html, text }) => {
+// ================= SAFE MAIL SENDER =================
+const sendMail = async (to, subject, html) => {
   try {
-    if (!to || !subject || (!html && !text)) {
-      throw new Error("Missing required email parameters");
+    if (!to || !subject || !html) {
+      throw new Error("Missing email fields");
     }
 
-    const mailOptions = {
-      from: `"Core.AI Alerts ⚡" <${process.env.EMAIL_USER}>`,
+    const info = await transporter.sendMail({
+      from: `"AlertAIQ" <${process.env.EMAIL_USER}>`,
       to,
       subject,
       html,
-      text, // fallback for plain email clients
-    };
+    });
 
-    const info = await transporter.sendMail(mailOptions);
-
-    console.log(`📩 Mail Sent → ${to} | ID: ${info.messageId}`);
+    console.log("📩 Email sent:", info.messageId);
 
     return {
       success: true,
       messageId: info.messageId,
     };
+
   } catch (err) {
-    console.error("❌ Mail Send Failed:", err.message);
+    console.error("❌ Mail send failed:", err.message);
 
     return {
       success: false,
