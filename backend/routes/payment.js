@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
-const auth = require("../middleware/auth");
+const auth = require("../middleware/authMiddleware");
 
 router.post("/unlock", auth, async (req, res) => {
   const { freq } = req.body;
