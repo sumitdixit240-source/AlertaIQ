@@ -1,42 +1,17 @@
-// ======================
-// BASE URL (FINAL CORRECT)
-// ======================
-const BASE = "https://alertaiq.onrender.com/api/nodes";
+const BASE = "https://alertai-q.vercel.app/api/nodes";
 
 // ======================
 // TOKEN
 // ======================
 function getToken() {
-    const token = localStorage.getItem("token");
-    console.log("🔑 TOKEN:", token);
-    return token;
+    return localStorage.getItem("token");
 }
 
 // ======================
-// SAFE FETCH (IMPORTANT FIX)
-// ======================
-async function safeFetch(url, options = {}, retries = 2) {
-    try {
-        const res = await fetch(url, options);
-        return res;
-    } catch (err) {
-        console.warn("⚠️ Network error, retrying...", err.message);
-
-        if (retries > 0) {
-            await new Promise(r => setTimeout(r, 2000));
-            return safeFetch(url, options, retries - 1);
-        }
-
-        throw new Error("Network connection failed (server down or no internet)");
-    }
-}
-
-// ======================
-// HANDLE AUTH ERROR
+// HANDLE AUTH ERROR (IMPORTANT)
 // ======================
 function handleAuthError(res, data) {
     if (res.status === 401 || res.status === 403) {
-        console.warn("🚨 Auth error:", res.status);
         localStorage.removeItem("token");
         window.location.href = "index.html";
         return true;
@@ -48,23 +23,14 @@ function handleAuthError(res, data) {
 // CREATE NODE
 // ======================
 async function pushNodeToCloud(node) {
-    console.log("📤 Sending node:", node);
-    showOverlay("Connecting to Cloud...");
-
     try {
-        const res = await safeFetch(`${BASE}/create`, {
+        const res = await fetch(`${BASE}/create`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${getToken()}`
             },
-            body: JSON.stringify({
-                title: node.title,
-                category: node.category,
-                frequency: node.frequency,
-                amount: Number(node.amount),
-                expiryDate: new Date(node.expiryDate).toISOString()
-            })
+            body: JSON.stringify(node)
         });
 
         const data = await res.json();
@@ -72,29 +38,25 @@ async function pushNodeToCloud(node) {
         if (handleAuthError(res, data)) return null;
 
         if (!res.ok) {
-            throw new Error(data.message || "Create failed");
+            console.error("Create error:", data);
+            throw new Error(data.message || data.error || "Create failed");
         }
 
-        console.log("✅ Node created:", data);
-
-        await syncNodes();
-        return data.data || data.node || data;
+        // backend flexible response handling
+        return data.data || data.node || data._id || data.id || data;
 
     } catch (err) {
-        console.error("🔥 CREATE ERROR:", err.message);
-        showError(err.message);
+        console.error("Create network error:", err);
         return null;
-    } finally {
-        hideOverlay();
     }
 }
 
 // ======================
 // GET ALL NODES
 // ======================
-async function syncNodes() {
+async function getNodesFromCloud() {
     try {
-        const res = await safeFetch(`${BASE}/all`, {
+        const res = await fetch(`${BASE}/all`, {
             method: "GET",
             headers: {
                 "Authorization": `Bearer ${getToken()}`
@@ -103,18 +65,19 @@ async function syncNodes() {
 
         const data = await res.json();
 
-        if (handleAuthError(res, data)) return;
+        if (handleAuthError(res, data)) return [];
 
-        if (!res.ok) throw new Error("Fetch failed");
+        if (!res.ok) {
+            console.error("Fetch error:", data);
+            return [];
+        }
 
-        activeNodes = data.data || data.nodes || [];
-        setNetworkStatus(true);
-        renderUI();
+        // SAFE BACKEND COMPATIBILITY
+        return data.data || data.nodes || data.result || [];
 
     } catch (err) {
-        console.error("🔥 FETCH ERROR:", err.message);
-        setNetworkStatus(false);
-        showError("Server offline or internet issue");
+        console.error("Fetch network error:", err);
+        return [];
     }
 }
 
@@ -123,7 +86,7 @@ async function syncNodes() {
 // ======================
 async function deleteNodeFromCloud(id) {
     try {
-        const res = await safeFetch(`${BASE}/delete/${id}`, {
+        const res = await fetch(`${BASE}/delete/${id}`, {
             method: "DELETE",
             headers: {
                 "Authorization": `Bearer ${getToken()}`
@@ -134,14 +97,15 @@ async function deleteNodeFromCloud(id) {
 
         if (handleAuthError(res, data)) return null;
 
-        if (!res.ok) throw new Error("Delete failed");
+        if (!res.ok) {
+            console.error("Delete error:", data);
+            return null;
+        }
 
-        await syncNodes();
-        return true;
+        return data.success ? true : data;
 
     } catch (err) {
-        console.error("🔥 DELETE ERROR:", err.message);
-        showError(err.message);
+        console.error("Delete network error:", err);
         return null;
     }
 }
