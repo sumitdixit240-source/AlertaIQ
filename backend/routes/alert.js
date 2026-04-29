@@ -1,158 +1,66 @@
 const express = require("express");
 const router = express.Router();
-
 const Alert = require("../models/Alert");
-const OTP = require("../models/OTP");
-const sendMail = require("../services/mailer");
 const auth = require("../middleware/auth");
+const sendEmail = require("../services/mailer");
 
-
-// ================= HEALTH CHECK =================
-router.get("/", auth, (req, res) => {
-  res.json({
-    success: true,
-    message: "Alert system active 🚀",
-    user: req.user.id
-  });
-});
-
-
-// ================= CREATE ALERT =================
-router.post(["/create", "/add"], auth, async (req, res) => {
+// ✅ CREATE NODE
+router.post("/", auth, async (req, res) => {
   try {
-    const { title, message, description } = req.body;
-
-    if (!title && !message && !description) {
-      return res.status(400).json({
-        success: false,
-        message: "Title or message required"
-      });
-    }
-
-    const alert = await Alert.create({
-      userId: req.user.id,
-      title: title || "No Title",
-      message: message || description || ""
+    const alert = new Alert({
+      ...req.body,
+      user: req.user,
     });
 
-    res.json({
-      success: true,
-      message: "Alert created",
-      data: alert
-    });
+    await alert.save();
 
-  } catch (err) {
-    console.error("CREATE ALERT ERROR:", err.message);
-    res.status(500).json({
-      success: false,
-      error: "Failed to create alert"
-    });
-  }
-});
+    // 📧 Confirmation Email (300 words professional)
+    await sendEmail(
+      alert.email,
+      "AlertaiQ Node Registration Successful",
+      `
+      <h2>AlertaiQ Confirmation</h2>
 
+      <p>
+      Your entity is now successfully registered and actively monitored under AlertaiQ.
+      Our system will continuously track your service and notify you based on your selected frequency.
+      </p>
 
-// ================= GET USER ALERTS =================
-router.get(["/my", "/list"], auth, async (req, res) => {
-  try {
-    const alerts = await Alert.find({
-      userId: req.user.id
-    }).sort({ createdAt: -1 });
+      <h3>Node Details:</h3>
+      <ul>
+        <li><b>Node:</b> ${alert.nodeName}</li>
+        <li><b>Owner:</b> ${alert.ownerName}</li>
+        <li><b>Sector:</b> ${alert.sector}</li>
+        <li><b>Service:</b> ${alert.subService}</li>
+        <li><b>Amount:</b> ₹${alert.amount}</li>
+        <li><b>Frequency:</b> ${alert.frequency}</li>
+        <li><b>Expiry:</b> ${alert.expiryDate}</li>
+      </ul>
 
-    res.json({
-      success: true,
-      data: alerts
-    });
+      <p><b>Created At:</b> ${new Date()}</p>
 
-  } catch (err) {
-    console.error("GET ALERTS ERROR:", err.message);
-    res.status(500).json({
-      success: false,
-      error: "Failed to fetch alerts"
-    });
-  }
-});
+      <hr>
 
-
-// ================= SEND OTP (SECURE VERSION) =================
-router.post("/send-otp", auth, async (req, res) => {
-  try {
-    const email = req.user.email;
-
-    // 🔥 Prevent OTP spam (delete old first)
-    await OTP.deleteMany({ userId: req.user.id });
-
-    const otp = Math.floor(100000 + Math.random() * 900000);
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 min
-
-    await OTP.create({
-      email,
-      otp,
-      userId: req.user.id,
-      createdAt: new Date(),
-      expiresAt
-    });
-
-    await sendMail(
-      email,
-      "RenewAI OTP Verification",
-      `<h2>Your OTP is: ${otp}</h2><p>Valid for 5 minutes</p>`
+      <p style="font-size:12px;">
+      AlertaiQ is an intelligent monitoring platform that helps individuals and businesses manage subscriptions,
+      track recurring payments, and receive timely alerts using automation and smart scheduling.
+      </p>
+      `
     );
 
     res.json({
-      success: true,
-      message: "OTP sent successfully"
+      msg: "Node created successfully. Email sent.",
+      alert,
     });
-
   } catch (err) {
-    console.error("SEND OTP ERROR:", err.message);
-    res.status(500).json({
-      success: false,
-      error: "Failed to send OTP"
-    });
+    res.status(500).json({ msg: err.message });
   }
 });
 
-
-// ================= VERIFY OTP (SECURE VERSION) =================
-router.post("/verify-otp", auth, async (req, res) => {
-  try {
-    const { otp } = req.body;
-
-    const record = await OTP.findOne({
-      userId: req.user.id,
-      otp: Number(otp)
-    });
-
-    if (!record) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid OTP"
-      });
-    }
-
-    // ⛔ expiry check
-    if (record.expiresAt && Date.now() > record.expiresAt) {
-      await OTP.deleteMany({ userId: req.user.id });
-      return res.status(400).json({
-        success: false,
-        message: "OTP expired"
-      });
-    }
-
-    await OTP.deleteMany({ userId: req.user.id });
-
-    res.json({
-      success: true,
-      message: "OTP verified successfully"
-    });
-
-  } catch (err) {
-    console.error("VERIFY OTP ERROR:", err.message);
-    res.status(500).json({
-      success: false,
-      error: "OTP verification failed"
-    });
-  }
+// ✅ GET USER DATA (ISOLATED)
+router.get("/", auth, async (req, res) => {
+  const alerts = await Alert.find({ user: req.user });
+  res.json(alerts);
 });
 
 module.exports = router;
