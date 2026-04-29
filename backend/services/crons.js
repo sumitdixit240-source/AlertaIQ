@@ -2,27 +2,29 @@ const cron = require("node-cron");
 const Alert = require("../models/Alert");
 const sendMail = require("./mailer");
 
-// ================= INTERVAL MAP =================
+// ================= INTERVAL MAPPING =================
 const getIntervalMs = (freq) => {
   const map = {
     daily: 24 * 60 * 60 * 1000,
     weekly: 7 * 24 * 60 * 60 * 1000,
     monthly: 30 * 24 * 60 * 60 * 1000,
-    yearly: 365 * 24 * 60 * 60 * 1000,
+    "one-time": null,
   };
   return map[freq] || null;
 };
 
-// ================= CRON ENGINE =================
+// ================= CRON JOB =================
+// runs every minute
 cron.schedule("* * * * *", async () => {
-  console.log(`⏱ Core.AI Alert Engine: ${new Date().toISOString()}`);
+  console.log(`⏱ Cron started at ${new Date().toISOString()}`);
 
   const now = Date.now();
 
   try {
+    // ❗ Only fetch required fields (performance improvement)
     const alerts = await Alert.find(
       {},
-      "email title category amount frequency expiryDate lastSent"
+      "email title category amount frequency expiryDate lastSent reminderSent"
     );
 
     for (const alert of alerts) {
@@ -30,85 +32,81 @@ cron.schedule("* * * * *", async () => {
         if (!alert.expiryDate || !alert.email) continue;
 
         const expiryTime = new Date(alert.expiryDate).getTime();
-        if (isNaN(expiryTime)) continue;
+        if (Number.isNaN(expiryTime)) continue;
 
         const diff = expiryTime - now;
 
-        // ❌ STOP after expiry
+        // ❌ already expired → skip
         if (diff <= 0) continue;
 
-        const lastSentTime = alert.lastSent
-          ? new Date(alert.lastSent).getTime()
-          : 0;
+        const days = Math.floor(diff / (86400000));
+        const hours = Math.floor((diff % 86400000) / 3600000);
 
-        // ======================================================
-        // 1. ONE-TIME MODE (24 HOURS BEFORE EXPIRY ONLY)
-        // ======================================================
+        // ================= ONE-TIME ALERT =================
         if (alert.frequency === "one-time") {
-          const oneDay = 24 * 60 * 60 * 1000;
+          const reminderWindow = 3 * 86400000; // 3 days
 
-          const shouldSend = diff <= oneDay && now - lastSentTime > oneDay;
-
-          if (shouldSend) {
+          if (diff <= reminderWindow && !alert.reminderSent) {
             await sendMail(
               alert.email,
-              `⚠️ Core.AI Alert: ${alert.title}`,
+              "⚠️ Renewal Reminder",
               `
-                <div style="font-family:Arial">
-                  <h2>${alert.title}</h2>
-                  <p><b>Category:</b> ${alert.category}</p>
-                  <p><b>Amount:</b> ₹${alert.amount}</p>
-                  <p><b>Expiry:</b> ${new Date(expiryTime).toLocaleString()}</p>
-                  <h3>⏳ Expires in: ${Math.floor(diff / 86400000)}d</h3>
-                </div>
+                <h2>${alert.title} Expiring Soon</h2>
+                <p><b>Category:</b> ${alert.category}</p>
+                <p><b>Amount:</b> ₹${alert.amount}</p>
+                <p><b>Expiry:</b> ${new Date(expiryTime).toLocaleString()}</p>
+                <h3>⏳ Time Left: ${days}d ${hours}h</h3>
               `
             );
 
+            alert.reminderSent = true;
             alert.lastSent = new Date();
             await alert.save();
 
-            console.log(`📩 One-time alert → ${alert.email}`);
+            console.log(`📩 One-time alert sent → ${alert.email}`);
           }
 
           continue;
         }
 
-        // ======================================================
-        // 2. RECURRING MODE (DAILY/WEEKLY/MONTHLY/YEARLY)
-        // ======================================================
+        // ================= RECURRING ALERT =================
         const interval = getIntervalMs(alert.frequency);
         if (!interval) continue;
+
+        const lastSentTime = alert.lastSent
+          ? new Date(alert.lastSent).getTime()
+          : 0;
 
         const shouldSend = now - lastSentTime >= interval;
 
         if (shouldSend) {
           await sendMail(
             alert.email,
-            `⏳ Core.AI Renewal Alert - ${alert.title}`,
+            "⏳ Renewal Alert",
             `
-              <div style="font-family:Arial">
-                <h2>${alert.title}</h2>
-                <p><b>Category:</b> ${alert.category}</p>
-                <p><b>Amount:</b> ₹${alert.amount}</p>
-                <p><b>Frequency:</b> ${alert.frequency}</p>
-                <p><b>Expiry:</b> ${new Date(expiryTime).toLocaleString()}</p>
-                <h3>⏳ Time Left: ${Math.floor(diff / 86400000)} days</h3>
-              </div>
+              <h2>${alert.title}</h2>
+              <p><b>Category:</b> ${alert.category}</p>
+              <p><b>Amount:</b> ₹${alert.amount}</p>
+              <p><b>Frequency:</b> ${alert.frequency}</p>
+              <p><b>Expiry:</b> ${new Date(expiryTime).toLocaleString()}</p>
+              <h3>⏰ Time Left: ${days}d ${hours}h</h3>
             `
           );
 
           alert.lastSent = new Date();
           await alert.save();
 
-          console.log(`📩 Recurring alert → ${alert.email}`);
+          console.log(`📩 Recurring alert sent → ${alert.email}`);
         }
 
       } catch (err) {
-        console.error(`⚠️ Error alert ${alert._id}:`, err.message);
+        console.error(`⚠️ Alert error (${alert._id}):`, err.message);
       }
     }
 
+    console.log("✅ Cron cycle completed");
+
   } catch (err) {
-    console.error("❌ Cron failed:", err.message);
+    console.error("❌ Cron job failed:", err.message);
   }
 });
