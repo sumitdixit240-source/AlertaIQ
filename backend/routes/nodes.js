@@ -3,7 +3,7 @@ const router = express.Router();
 
 const Node = require("../models/Node");
 const User = require("../models/User");
-const auth = require("../middleware/auth");
+const auth = require("../middleware/authMiddleware");
 
 
 // ================= GET USER NODES =================
