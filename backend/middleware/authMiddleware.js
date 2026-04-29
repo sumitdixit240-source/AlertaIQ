@@ -4,31 +4,48 @@ module.exports = (req, res, next) => {
   try {
     let token = req.headers.authorization;
 
-    // ✅ Check token exists
+    // ================= CHECK TOKEN =================
     if (!token) {
-      return res.status(401).json({ msg: "No token, access denied" });
+      return res.status(401).json({
+        success: false,
+        message: "No token, access denied",
+      });
     }
 
-    // ✅ Handle "Bearer <token>" format
-    if (token.startsWith("Bearer ")) {
+    // ================= BEARER HANDLING =================
+    if (typeof token === "string" && token.startsWith("Bearer ")) {
       token = token.split(" ")[1];
     }
 
-    // ❌ Extra safety check
     if (!token) {
-      return res.status(401).json({ msg: "Invalid token format" });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token format",
+      });
     }
 
-    // ✅ Verify token
+    // ================= VERIFY TOKEN =================
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // attach user id to request
+    // safer fallback check
+    if (!decoded || !decoded.id) {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid token payload",
+      });
+    }
+
+    // attach user id
     req.user = decoded.id;
 
     next();
-  } catch (err) {
-    console.error("Auth Middleware Error:", err.message);
 
-    return res.status(401).json({ msg: "Invalid or expired token" });
+  } catch (error) {
+    console.error("❌ Auth Middleware Error:", error.message);
+
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired token",
+    });
   }
 };
