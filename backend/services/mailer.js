@@ -5,11 +5,11 @@ if (!process.env.EMAIL || !process.env.EMAIL_PASS) {
   console.error("❌ EMAIL credentials missing in environment variables");
 }
 
-// ================= OPTIMIZED TRANSPORTER =================
+// ================= TRANSPORTER (ROBUST VERSION) =================
 const transporter = nodemailer.createTransport({
   host: "smtp.gmail.com",
-  port: 465,
-  secure: true,
+  port: 587,              // FIX: better for cloud servers
+  secure: false,          // FIX: use STARTTLS
 
   auth: {
     user: process.env.EMAIL,
@@ -20,27 +20,20 @@ const transporter = nodemailer.createTransport({
     rejectUnauthorized: false,
   },
 
-  // ⚡ SPEED OPTIMIZATION SETTINGS
-  pool: true,              // reuse connection (VERY IMPORTANT)
-  maxConnections: 5,
-  maxMessages: 100,
-  rateLimit: 5,            // prevents Gmail throttling
-
-  connectionTimeout: 5000,
-  greetingTimeout: 5000,
-  socketTimeout: 5000,
+  connectionTimeout: 10000,
+  socketTimeout: 10000,
 });
 
-// ================= VERIFY (ONLY ON START) =================
+// ================= VERIFY =================
 transporter.verify((error) => {
   if (error) {
     console.error("❌ Mail Server Error:", error.message);
   } else {
-    console.log("📧 Mail Server Ready (FAST MODE)");
+    console.log("📧 Mail Server Ready");
   }
 });
 
-// ================= SEND EMAIL (OPTIMIZED FOR OTP SPEED) =================
+// ================= SEND EMAIL =================
 const sendMail = async (to, subject, html) => {
   try {
     if (!to || !subject || !html) {
@@ -57,7 +50,6 @@ const sendMail = async (to, subject, html) => {
     console.log("📧 OTP Email Sent:", info.messageId);
 
     return true;
-
   } catch (err) {
     console.error("❌ Email Error:", err.message);
     return false;
