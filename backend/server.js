@@ -38,7 +38,7 @@ app.use(
   })
 );
 
-// ================= CORS FIX (IMPORTANT) =================
+// ================= CORS (FIXED) =================
 const allowedOrigins = [
   "https://alertai-q.vercel.app",
   "http://localhost:5500",
@@ -52,9 +52,9 @@ app.use(
 
       if (
         allowedOrigins.includes(origin) ||
+        origin.endsWith("vercel.app") ||
         origin.includes("localhost") ||
-        origin.includes("127.0.0.1") ||
-        origin.includes("vercel.app")
+        origin.includes("127.0.0.1")
       ) {
         return callback(null, true);
       }
@@ -62,15 +62,38 @@ app.use(
       console.log("🚫 CORS BLOCKED:", origin);
       return callback(new Error("CORS not allowed"), false);
     },
+
     credentials: true,
+
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+
+    allowedHeaders: [
+      "Content-Type",
+      "Authorization",
+      "Cookie",
+    ],
   })
 );
 
-// ================= MIDDLEWARE =================
+// ================= BODY PARSING =================
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
+
+// ================= SECURITY =================
 app.use(mongoSanitize());
 app.use(cookieParser());
+
+// ================= REQUEST TIMEOUT SAFETY =================
+app.use((req, res, next) => {
+  res.setTimeout(15000, () => {
+    console.log("⏰ Timeout:", req.originalUrl);
+    res.status(408).json({
+      success: false,
+      message: "Request timeout",
+    });
+  });
+  next();
+});
 
 // ================= RATE LIMIT =================
 app.use(
@@ -85,7 +108,7 @@ app.use(
   })
 );
 
-// ================= SOCKET =================
+// ================= SOCKET.IO =================
 const io = socketIo(server, {
   cors: {
     origin: "*",
@@ -119,7 +142,7 @@ app.use("/api/alerts", alertRoutes);
 app.use("/api/nodes", nodeRoutes);
 app.use("/api/payment", paymentRoutes);
 
-// ================= HEALTH =================
+// ================= HEALTH CHECK =================
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -137,10 +160,10 @@ app.use((req, res) => {
   });
 });
 
-// ================= ERROR =================
+// ================= ERROR HANDLER =================
 app.use(errorMiddleware);
 
-// ================= START =================
+// ================= START SERVER =================
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, "0.0.0.0", () => {
