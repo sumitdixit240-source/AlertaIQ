@@ -34,7 +34,7 @@ app.use(
   })
 );
 
-// ================= CORS =================
+// ================= CORS (FIXED FOR FRONTEND) =================
 const allowedOrigins = [
   "https://alertai-q.vercel.app",
   "http://localhost:5500",
@@ -46,7 +46,12 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      // allow Vercel + localhost + any localhost variant
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.includes("localhost") ||
+        origin.includes("127.0.0.1")
+      ) {
         return callback(null, true);
       }
 
@@ -57,7 +62,7 @@ app.use(
   })
 );
 
-// ================= BODY =================
+// ================= BODY PARSER =================
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(mongoSanitize());
@@ -68,10 +73,20 @@ app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 100,
+    message: {
+      success: false,
+      message: "Too many requests, try again later.",
+    },
   })
 );
 
-// ================= SOCKET =================
+// ================= REQUEST LOGGER (DEBUG TOOL) =================
+app.use((req, res, next) => {
+  console.log(`📡 ${req.method} ${req.originalUrl}`);
+  next();
+});
+
+// ================= SOCKET.IO =================
 const io = socketIo(server, {
   cors: {
     origin: allowedOrigins,
@@ -93,47 +108,46 @@ io.on("connection", (socket) => {
   });
 });
 
-// ================= LOG =================
-app.use((req, res, next) => {
-  console.log(`➡ ${req.method} ${req.originalUrl}`);
-  next();
-});
-
 // ================= ROUTES =================
 app.use("/api/auth", authRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/nodes", nodeRoutes);
 app.use("/api/payment", paymentRoutes);
 
-// ================= HEALTH =================
+// ================= HEALTH CHECK =================
 app.get("/", (req, res) => {
-  res.json({ success: true, message: "AlertAIQ Running 🚀" });
-});
-
-// ================= 404 =================
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: "Route not found",
+  res.json({
+    success: true,
+    message: "AlertAIQ Backend Running 🚀",
   });
 });
 
-// ================= ERROR =================
+// ================= 404 HANDLER =================
+app.use((req, res) => {
+  console.log("❌ 404 NOT FOUND:", req.originalUrl);
+
+  res.status(404).json({
+    success: false,
+    message: `Route not found: ${req.originalUrl}`,
+  });
+});
+
+// ================= ERROR HANDLER =================
 app.use(errorMiddleware);
 
-// ================= START =================
+// ================= START SERVER =================
 async function startServer() {
   try {
     await connectDB();
-    console.log("✅ DB Connected");
+    console.log("✅ Database Connected");
 
     const PORT = process.env.PORT || 5000;
 
     server.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Server running on ${PORT}`);
+      console.log(`🚀 Server running on port ${PORT}`);
     });
   } catch (err) {
-    console.error("❌ SERVER ERROR:", err.message);
+    console.error("❌ Server startup error:", err.message);
     process.exit(1);
   }
 }
