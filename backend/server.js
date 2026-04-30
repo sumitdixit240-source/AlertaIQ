@@ -7,6 +7,7 @@ const cors = require("cors");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const mongoSanitize = require("express-mongo-sanitize");
+const cookieParser = require("cookie-parser");
 
 const connectDB = require("./config/db");
 
@@ -27,6 +28,9 @@ const server = http.createServer(app);
 
 app.set("trust proxy", 1);
 
+// ================= DB =================
+connectDB();
+
 // ================= SECURITY =================
 app.use(
   helmet({
@@ -34,7 +38,7 @@ app.use(
   })
 );
 
-// ================= CORS (FIXED FOR FRONTEND) =================
+// ================= CORS FIX (IMPORTANT) =================
 const allowedOrigins = [
   "https://alertai-q.vercel.app",
   "http://localhost:5500",
@@ -46,33 +50,34 @@ app.use(
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
 
-      // allow Vercel + localhost + any localhost variant
       if (
         allowedOrigins.includes(origin) ||
         origin.includes("localhost") ||
-        origin.includes("127.0.0.1")
+        origin.includes("127.0.0.1") ||
+        origin.includes("vercel.app")
       ) {
         return callback(null, true);
       }
 
       console.log("🚫 CORS BLOCKED:", origin);
-      return callback(null, false);
+      return callback(new Error("CORS not allowed"), false);
     },
     credentials: true,
   })
 );
 
-// ================= BODY PARSER =================
+// ================= MIDDLEWARE =================
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
 app.use(mongoSanitize());
+app.use(cookieParser());
 
 // ================= RATE LIMIT =================
 app.use(
   "/api",
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 100,
+    max: 200,
     message: {
       success: false,
       message: "Too many requests, try again later.",
@@ -80,16 +85,10 @@ app.use(
   })
 );
 
-// ================= REQUEST LOGGER (DEBUG TOOL) =================
-app.use((req, res, next) => {
-  console.log(`📡 ${req.method} ${req.originalUrl}`);
-  next();
-});
-
-// ================= SOCKET.IO =================
+// ================= SOCKET =================
 const io = socketIo(server, {
   cors: {
-    origin: allowedOrigins,
+    origin: "*",
     credentials: true,
   },
 });
@@ -108,13 +107,19 @@ io.on("connection", (socket) => {
   });
 });
 
+// ================= LOGGING =================
+app.use((req, res, next) => {
+  console.log(`📡 ${req.method} ${req.originalUrl}`);
+  next();
+});
+
 // ================= ROUTES =================
 app.use("/api/auth", authRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/nodes", nodeRoutes);
 app.use("/api/payment", paymentRoutes);
 
-// ================= HEALTH CHECK =================
+// ================= HEALTH =================
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -122,34 +127,22 @@ app.get("/", (req, res) => {
   });
 });
 
-// ================= 404 HANDLER =================
+// ================= 404 =================
 app.use((req, res) => {
-  console.log("❌ 404 NOT FOUND:", req.originalUrl);
+  console.log("❌ 404:", req.originalUrl);
 
   res.status(404).json({
     success: false,
-    message: `Route not found: ${req.originalUrl}`,
+    message: "Route not found",
   });
 });
 
-// ================= ERROR HANDLER =================
+// ================= ERROR =================
 app.use(errorMiddleware);
 
-// ================= START SERVER =================
-async function startServer() {
-  try {
-    await connectDB();
-    console.log("✅ Database Connected");
+// ================= START =================
+const PORT = process.env.PORT || 5000;
 
-    const PORT = process.env.PORT || 5000;
-
-    server.listen(PORT, "0.0.0.0", () => {
-      console.log(`🚀 Server running on port ${PORT}`);
-    });
-  } catch (err) {
-    console.error("❌ Server startup error:", err.message);
-    process.exit(1);
-  }
-}
-
-startServer();
+server.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
