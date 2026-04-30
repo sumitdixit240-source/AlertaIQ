@@ -190,10 +190,10 @@
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             border-radius: 16px;
             width: calc(100% - 2rem);
-            max-width: 400px;
+            max-width: 420px;
         }
 
-        #msg-box.active { transform: translate(-50%, 0); opacity: 1; }
+        #msg-box.active { transform: translate(-50%, 0); opacity: 1; pointer-events: auto; }
 
         @media (min-width: 768px) {
             #msg-box { left: auto; right: 1.5rem; transform: translateY(-20px); width: auto; }
@@ -211,14 +211,18 @@
 <div class="grid-overlay"></div>
 <div id="glow" class="glow-cursor"></div>
 
-<div id="msg-box" class="glass-card px-5 py-4 flex items-center gap-4 border-l-4 border-indigo-500">
-    <div class="w-8 h-8 bg-indigo-500/10 rounded-full flex items-center justify-center flex-shrink-0">
-        <i class="fas fa-shield-check text-indigo-500 text-sm"></i>
+<!-- Custom Notification Toast -->
+<div id="msg-box" class="glass-card px-5 py-4 flex items-start gap-4 border-l-4 border-indigo-500">
+    <div class="w-8 h-8 bg-indigo-500/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
+        <i id="msg-icon" class="fas fa-shield-check text-indigo-500 text-sm"></i>
     </div>
-    <div class="overflow-hidden">
-        <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest truncate">System Status</p>
-        <span id="msg-text" class="text-sm font-medium text-white block truncate"></span>
+    <div class="flex-1 overflow-hidden pr-6">
+        <p class="text-[9px] text-slate-500 font-bold uppercase tracking-widest">System Broadcast</p>
+        <span id="msg-text" class="text-[13px] font-medium text-white block mt-0.5 leading-relaxed"></span>
     </div>
+    <button onclick="document.getElementById('msg-box').classList.remove('active')" class="absolute top-4 right-4 text-slate-500 hover:text-white transition">
+        <i class="fas fa-times text-[10px]"></i>
+    </button>
 </div>
 
 <header class="fixed top-0 w-full p-5 md:p-8 flex justify-between items-center z-50 bg-black/40 backdrop-blur-xl border-b border-white/5">
@@ -231,7 +235,6 @@
     <div class="hidden md:flex items-center gap-8 text-[13px] font-semibold">
         <span id="user-welcome" class="text-indigo-300 font-mono-custom text-[11px] hidden"></span>
         <a href="#" class="text-white hover:opacity-80 transition">Services</a>
-        <a href="#" class="text-slate-400 hover:text-white transition">Pricing</a>
         <button id="auth-header-btn" onclick="UI.open()" class="text-indigo-400 hover:text-indigo-300 transition">Login</button>
     </div>
     <button onclick="UI.open()" class="md:hidden w-9 h-9 bg-white/5 rounded-lg flex items-center justify-center text-white">
@@ -313,12 +316,19 @@
             <p id="verify-desc" class="text-indigo-400 font-mono-custom text-[10px] mt-3 uppercase tracking-[0.2em]">Securing your connection...</p>
         </div>
 
+        <!-- Success Message Box -->
         <div id="successBox" class="hidden absolute inset-0 bg-indigo-600 z-[120] flex flex-col items-center justify-center p-8 text-center">
-            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-4 shadow-2xl">
-                <i class="fas fa-check text-indigo-600 text-2xl"></i>
+            <div class="w-16 h-16 bg-white rounded-full flex items-center justify-center mb-6 shadow-2xl">
+                <i id="success-icon" class="fas fa-check text-indigo-600 text-2xl"></i>
             </div>
-            <h3 class="text-xl font-bold text-white tracking-tight">Access Granted</h3>
-            <p class="text-indigo-100 text-xs mt-2">Opening secure portal...</p>
+            <h3 id="success-title" class="text-xl font-extrabold text-white tracking-tight">Deployment Complete</h3>
+            <div class="mt-4 px-4">
+                <p id="success-quote" class="text-indigo-100 text-sm italic font-medium leading-relaxed">"Beware of little expenses; a small leak will sink a great ship."</p>
+                <p id="success-author" class="text-[10px] text-indigo-200 mt-2 font-bold uppercase tracking-widest">— Benjamin Franklin</p>
+            </div>
+            <p class="text-white/60 text-[10px] mt-8 font-bold uppercase tracking-widest animate-pulse">Initializing Portal...</p>
+            
+            <button onclick="UI.hideSuccess()" class="mt-8 text-white/50 hover:text-white transition text-[10px] font-bold uppercase tracking-wider">Close</button>
         </div>
 
         <!-- Login View -->
@@ -405,51 +415,46 @@
 const BACKEND_URL = "https://alertaiq.onrender.com";
 let isLoading = false;
 
+const QUOTES = [
+    { text: "Beware of little expenses; a small leak will sink a great ship.", author: "Benjamin Franklin" },
+    { text: "Do not save what is left after spending; instead spend what is left after saving.", author: "Warren Buffett" },
+    { text: "The goal isn't more money. The goal is living life on your terms.", author: "Chris Brogan" },
+    { text: "Financial freedom is available to those who learn about it and work for it.", author: "Robert Kiyosaki" }
+];
+
 /**
- * 🚀 2. SAFE FETCH (FIXED + DEBUG ENABLED)
+ * 🚀 CRITICAL FIX: Improved safeFetch
  */
 async function safeFetch(url, options = {}) {
     try {
         console.log("➡ API CALL:", url);
-
         const token = localStorage.getItem("token");
         const headers = {
             "Content-Type": "application/json",
             "Accept": "application/json",
             ...(options.headers || {})
         };
-
-        // Inject Authorization header if token exists
-        if (token) {
-            headers["Authorization"] = `Bearer ${token}`;
-        }
+        if (token) headers["Authorization"] = `Bearer ${token}`;
 
         const res = await fetch(url, {
             method: options.method || "GET",
-            headers: headers,
+            headers,
             body: options.body ? JSON.stringify(options.body) : undefined,
         });
 
         console.log("⬅ STATUS:", res.status);
 
-        // Global handler for expired or invalid tokens
-        if (res.status === 401 && !url.includes('/login') && !url.includes('/register') && !url.includes('/verify-otp')) {
+        if (res.status === 404) {
+            throw new Error("Backend route not found (check API URL or server deployment)");
+        }
+
+        if (res.status === 401) {
             Auth.logout();
-            throw new Error("Session expired. Please log in again.");
+            throw new Error("Session expired. Please login again.");
         }
 
-        let data = {};
-        try {
-            const text = await res.text();
-            data = text ? JSON.parse(text) : {};
-        } catch (e) {
-            data = { message: "Invalid server response" };
-        }
-
-        if (!res.ok) {
-            throw new Error(data.message || data.msg || `Server Error (${res.status})`);
-        }
-
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || `Server Error (${res.status})`);
         return data;
 
     } catch (err) {
@@ -511,9 +516,25 @@ const UI = {
         document.getElementById("modal-close").classList.remove("hidden");
     },
 
-    showSuccess() {
-        document.getElementById("successBox").classList.remove("hidden");
+    showSuccess(title, quoteData = null, delay = 1500) {
+        const box = document.getElementById("successBox");
+        document.getElementById("success-title").innerText = title;
+        
+        if(quoteData) {
+            document.getElementById("success-quote").innerText = `"${quoteData.text}"`;
+            document.getElementById("success-author").innerText = `— ${quoteData.author}`;
+        }
+
+        box.classList.remove("hidden");
         document.getElementById("verifyBox").classList.add("hidden");
+        document.getElementById("modal-close").classList.add("hidden");
+        
+        return new Promise(resolve => setTimeout(resolve, delay));
+    },
+
+    hideSuccess() {
+        document.getElementById("successBox").classList.add("hidden");
+        document.getElementById("modal-close").classList.remove("hidden");
     },
 
     setMode(m) {
@@ -525,7 +546,7 @@ const UI = {
         if (m === 'otp') {
             otpBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black";
             passBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all text-slate-400";
-            document.getElementById('main-btn').innerText = 'Send OTP';
+            document.getElementById('main-btn').innerText = 'Unlock Dashboard';
         } else {
             passBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all bg-white text-black";
             otpBtn.className = "flex-1 py-2.5 text-[10px] font-bold rounded-lg transition-all text-slate-400";
@@ -536,26 +557,11 @@ const UI = {
         document.getElementById('otp-group').classList.add('hidden');
     },
 
-    notify(msg) {
+    notify(msg, duration = 4000) {
         const box = document.getElementById("msg-box");
         document.getElementById("msg-text").innerText = msg;
         box.classList.add("active");
-        setTimeout(() => box.classList.remove("active"), 4000);
-    },
-
-    updateAuthUI(user) {
-        const welcome = document.getElementById("user-welcome");
-        const btn = document.getElementById("auth-header-btn");
-        if (user) {
-            welcome.innerText = `AGENT: ${user.name || user.email}`;
-            welcome.classList.remove("hidden");
-            btn.innerText = "Logout";
-            btn.onclick = () => Auth.logout();
-        } else {
-            welcome.classList.add("hidden");
-            btn.innerText = "Login";
-            btn.onclick = () => UI.open();
-        }
+        setTimeout(() => box.classList.remove("active"), duration);
     }
 };
 
@@ -581,7 +587,10 @@ const Auth = {
                     });
                     UI.step = 'otp_sent';
                     UI.hideVerification();
-                    UI.notify("✅ OTP sent to email");
+                    
+                    // 🚨 User Request: Detailed OTP Notification (6 seconds)
+                    UI.notify("OTP sent to your email address. Kindly check your inbox. If not found, please check your spam folder.", 6000);
+                    
                     document.getElementById('otp-group').classList.remove('hidden');
                     document.getElementById('main-btn').innerText = "Verify OTP";
                     return;
@@ -591,10 +600,6 @@ const Auth = {
                     method: "POST",
                     body: { email, otp }
                 });
-
-                UI.step = 'idle';
-                document.getElementById('otp-group').classList.add('hidden');
-                document.getElementById('main-btn').innerText = 'Unlock Dashboard';
 
                 this.saveSession(data.token);
                 return;
@@ -630,8 +635,13 @@ const Auth = {
                 method: "POST",
                 body: { name, email, password }
             });
-            UI.notify("✅ Account Created! Please Login.");
-            setTimeout(() => UI.showLogin(), 2000);
+            
+            // 🚨 User Request: Success Modal with Quote for 5 seconds
+            const randomQuote = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+            await UI.showSuccess("Registration Successful", randomQuote, 5000);
+            
+            UI.showLogin();
+            UI.notify("✅ Account ready. Please login to continue.");
         } catch (err) {
             UI.hideVerification();
             UI.notify("❌ " + err.message);
@@ -640,14 +650,12 @@ const Auth = {
         }
     },
 
-    saveSession(token) {
+    async saveSession(token) {
         if (token) {
             localStorage.setItem("token", token);
             localStorage.setItem("token_time", Date.now());
-            UI.showSuccess();
-            setTimeout(() => {
-                window.location.href = "dashboard.html";
-            }, 1500);
+            await UI.showSuccess("Access Granted", QUOTES[1], 1500);
+            window.location.href = "dashboard.html";
         }
     },
 
@@ -657,37 +665,31 @@ const Auth = {
         location.reload();
     },
 
-    /**
-     * 🚀 3. FIXED SYNC PROFILE
-     */
     async syncProfile() {
         const token = localStorage.getItem("token");
         if (!token) return;
-
         try {
             const user = await safeFetch(`${BACKEND_URL}/api/auth/me`);
-            UI.updateAuthUI(user);
+            const welcome = document.getElementById("user-welcome");
+            const btn = document.getElementById("auth-header-btn");
+            if (user) {
+                welcome.innerText = `AGENT: ${user.name || user.email}`;
+                welcome.classList.remove("hidden");
+                btn.innerText = "Logout";
+                btn.onclick = () => Auth.logout();
+            }
         } catch (e) {
-            console.error("❌ Profile sync failed:", e.message);
+            console.error("❌ Profile sync failed");
         }
     }
 };
 
-/**
- * 🚀 4. SAFE PAGE LOAD LOGIC
- */
 window.addEventListener("load", () => {
     const token = localStorage.getItem("token");
     const time = localStorage.getItem("token_time");
-
-    if (!token || !time) return;
-
-    const expired = Date.now() - parseInt(time) > 7 * 24 * 60 * 60 * 1000;
-
-    if (expired) {
-        Auth.logout();
-    } else {
-        Auth.syncProfile();
+    if (token && time) {
+        const expired = Date.now() - parseInt(time) > 7 * 24 * 60 * 60 * 1000;
+        if (expired) Auth.logout(); else Auth.syncProfile();
     }
 });
 
