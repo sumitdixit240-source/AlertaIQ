@@ -1,7 +1,7 @@
 // ======================
 // BASE CONFIG
 // ======================
-const API_BASE = "http://localhost:5000/api"; 
+const API_BASE = "https://alertaiq.onrender.com/api"; 
 // 👉 PRODUCTION: replace with your backend URL
 // const API_BASE = "https://your-backend.onrender.com/api";
 
