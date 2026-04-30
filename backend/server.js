@@ -1,4 +1,4 @@
-require("dotenv").config(); // MUST BE FIRST
+require("dotenv").config();
 
 const express = require("express");
 const http = require("http");
@@ -25,12 +25,6 @@ require("./services/crons");
 const app = express();
 const server = http.createServer(app);
 
-// ================= ENV DEBUG (IMPORTANT FOR OTP) =================
-console.log("📧 EMAIL CONFIG CHECK:");
-console.log("EMAIL:", process.env.EMAIL);
-console.log("EMAIL_PASS exists:", !!process.env.EMAIL_PASS);
-console.log("NODE_ENV:", process.env.NODE_ENV);
-
 // ================= TRUST PROXY =================
 app.set("trust proxy", 1);
 
@@ -41,11 +35,14 @@ app.use(
   })
 );
 
-// ================= CORS =================
+// ================= ALLOWED ORIGINS =================
 const allowedOrigins = [
   "https://alertai-q.vercel.app",
+  "http://localhost:5500",
+  "http://127.0.0.1:5500"
 ];
 
+// ================= CORS FIX (IMPORTANT) =================
 app.use(
   cors({
     origin: function (origin, callback) {
@@ -56,7 +53,7 @@ app.use(
       }
 
       console.log("🚫 CORS BLOCKED:", origin);
-      return callback(null, false);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -64,21 +61,10 @@ app.use(
   })
 );
 
-// ================= GLOBAL HEADERS =================
-app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "https://alertai-q.vercel.app");
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
-  next();
-});
+// ================= HANDLE PREFLIGHT =================
+app.options("*", cors());
 
-// ================= PRE-FLIGHT =================
-app.options("*", (req, res) => {
-  res.sendStatus(200);
-});
-
-// ================= BODY =================
+// ================= BODY PARSER =================
 app.use(express.json({ limit: "10kb" }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -127,13 +113,13 @@ io.on("connection", (socket) => {
   });
 });
 
-// ================= REQUEST LOGGER =================
+// ================= LOG REQUESTS =================
 app.use((req, res, next) => {
   console.log(`➡ ${req.method} ${req.originalUrl}`);
   next();
 });
 
-// ================= ROUTES =================
+// ================= ROUTES (IMPORTANT PART) =================
 app.use("/api/auth", authRoutes);
 app.use("/api/alerts", alertRoutes);
 app.use("/api/nodes", nodeRoutes);
@@ -150,16 +136,7 @@ app.get("/", (req, res) => {
   });
 });
 
-// ================= GLOBAL ERROR DEBUG (IMPORTANT) =================
-process.on("unhandledRejection", (err) => {
-  console.error("❌ UNHANDLED REJECTION:", err.message);
-});
-
-process.on("uncaughtException", (err) => {
-  console.error("❌ UNCAUGHT EXCEPTION:", err.message);
-});
-
-// ================= 404 =================
+// ================= 404 HANDLER =================
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -182,9 +159,10 @@ async function startServer() {
     server.listen(PORT, "0.0.0.0", () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log("🔐 Security Layer Active");
-      console.log("🌍 Production Mode Ready");
+      console.log("🌍 Production Ready");
     });
 
+    // Graceful shutdown
     process.on("SIGTERM", () => {
       console.log("🛑 SIGTERM received...");
       server.close(() => process.exit(0));
